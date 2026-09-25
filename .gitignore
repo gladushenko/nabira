@@ -1,0 +1,60 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Xcode
+DerivedData/
+xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+*.dSYM
+*.dSYM.zip
+
+# Build and distribution artifacts
+dist/
+*.app
+*.dmg
+*.pkg
+*.ipa
+
+# macOS metadata
+.DS_Store
+._*
+
+# Local application data
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+*.log
+
+# Local environment and signing credentials
+.env
+.env.*
+!.env.example
+*.p12
+*.pem
+*.key
+*.mobileprovision
+*.provisionprofile
+
+# AI coding assistants and local MCP configuration
+.codex/
+.claude/
+.cursor/
+.windsurf/
+.continue/
+.cline/
+.roo/
+.gemini/
+.aider*
+.mcp.json
+AGENTS.md
+AGENTS.local.md
+CLAUDE.md
+CLAUDE.local.md
+GEMINI.md
+.github/copilot-instructions.md
