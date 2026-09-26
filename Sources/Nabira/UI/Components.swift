@@ -22,7 +22,7 @@ struct SourceIcon: View {
                     .accessibilityLabel(item.sourceAppName ?? "Unknown application")
             }
         }
-        .frame(width: 36, height: 36)
+        .frame(width: 48, height: 48)
     }
 
     private var imagePreview: NSImage? {
@@ -43,24 +43,46 @@ struct SourceIcon: View {
 
 struct ClipboardRow: View {
     let item: ClipboardItem
+    let select: () -> Void
+    let togglePin: () -> Void
+
     var body: some View {
-        HStack(spacing: 12) {
-            SourceIcon(item: item)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(item.title).font(.body).lineLimit(2)
-                HStack(spacing: 6) {
-                    Text(item.contentType.label)
-                    Text("•")
-                    Text(relativeAge)
-                    if item.copyCount > 1 { Text("• \(item.copyCount)×") }
+        HStack(spacing: 14) {
+            HStack(spacing: 14) {
+                SourceIcon(item: item)
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Text(item.contentType.label)
+                        Text("•")
+                        Text(relativeAge)
+                        if item.copyCount > 1 { Text("• \(item.copyCount)×") }
+                    }
+                    .font(.callout).foregroundStyle(.secondary)
+                    Text(displayedContent)
+                        .font(.title3)
+                        .lineLimit(2)
                 }
-                .font(.caption).foregroundStyle(.secondary)
+                Spacer(minLength: 4)
             }
-            Spacer(minLength: 4)
-            if item.isPinned { Image(systemName: "pin.fill").foregroundStyle(.secondary).accessibilityLabel("Pinned") }
+            .contentShape(Rectangle())
+            .onTapGesture(perform: select)
+
+            Button(action: togglePin) {
+                Label(item.isPinned ? "Unpin" : "Pin", systemImage: item.isPinned ? "pin.fill" : "pin")
+                    .labelStyle(.iconOnly)
+                    .font(.title3)
+            }
+            .buttonStyle(.borderless)
+            .help(item.isPinned ? "Unpin" : "Pin")
         }
-        .padding(.vertical, 5)
-        .contentShape(Rectangle())
+        .padding(.vertical, 7)
+    }
+
+    private var displayedContent: String {
+        guard item.contentType == .files else { return item.title }
+        if item.title.hasPrefix("file://"),
+           let url = URL(string: item.searchableText), url.isFileURL { return url.path }
+        return item.title
     }
 
     private var relativeAge: String {

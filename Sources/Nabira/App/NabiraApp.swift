@@ -62,7 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let services = try AppServices()
             self.services = services
             services.monitor.start()
-            // Key code 11 is the physical B key, which produces “И” in the Russian layout.
+            // Key code 11 is the physical B key.
             services.shortcuts.register(id: 1, keyCode: 11, modifiers: UInt32(cmdKey)) { [weak self] in self?.openLibrary() }
             configureMenuBar()
             if !UserDefaults.standard.bool(forKey: "completedOnboarding") { showOnboarding() }
@@ -77,7 +77,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem?.button?.image = NSImage(systemSymbolName: "clipboard", accessibilityDescription: "Nabira")
         let menu = NSMenu()
-        menu.addItem(item("Open Clipboard History", action: #selector(openLibrary), key: "b"))
+        menu.addItem(item("Clipboard History", action: #selector(openLibrary), key: "b"))
         menu.addItem(item("Clear All History…", action: #selector(confirmClearHistory)))
         menu.addItem(.separator())
         menu.addItem(item("Settings…", action: #selector(openSettings), key: ","))

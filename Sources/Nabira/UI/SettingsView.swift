@@ -18,7 +18,7 @@ struct SettingsView: View {
                 Toggle("Launch at Login", isOn: $state.launchAtLogin).onChange(of: state.launchAtLogin) { _, enabled in updateLaunchAtLogin(enabled) }
                 Toggle("Show in Dock", isOn: $settings.showInDock)
                 Picker("Appearance", selection: $settings.appearance) { ForEach(AppAppearance.allCases) { Text($0.rawValue).tag($0) } }
-                LabeledContent("Global shortcut", value: "⌘И")
+                LabeledContent("Global shortcut", value: "⌘B")
             }.padding().tabItem { Label("General", systemImage: "gear") }
 
             Form {
@@ -44,7 +44,7 @@ struct SettingsView: View {
             }.padding().tabItem { Label("Privacy", systemImage: "hand.raised") }
 
             Form {
-                LabeledContent("Open Clipboard History", value: "⌘И")
+                LabeledContent("Clipboard History", value: "⌘B")
                 LabeledContent("Paste plain text", value: "⌘↩")
                 LabeledContent("Pin / unpin", value: "⌘S")
                 LabeledContent("Delete", value: "⌘⌫")

@@ -40,8 +40,11 @@ struct LibraryView: View {
                 }
                 else {
                     List(model.items) { item in
-                        ClipboardRow(item: item)
-                            .onTapGesture { pasteAndClose(item) }
+                        ClipboardRow(
+                            item: item,
+                            select: { pasteAndClose(item) },
+                            togglePin: { model.togglePin(item) }
+                        )
                             .contextMenu {
                                 Button("Paste") { pasteAndClose(item) }
                                 Button("Paste as Plain Text") { pasteAndClose(item, plain: true) }

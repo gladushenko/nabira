@@ -77,6 +77,18 @@ private func repository() throws -> SQLiteClipboardRepository {
         #expect(try transformer.transform("{\"b\":2,\"a\":1}", using: .jsonMinify) == "{\"a\":1,\"b\":2}")
     }
 
+    @MainActor @Test func fileURLIsDisplayedAsAPath() {
+        let pasteboardItem = NSPasteboardItem()
+        let fileURL = "file:///Users/example/My%20File.txt"
+        pasteboardItem.setString(fileURL, forType: .fileURL)
+        let representation = PasteboardRepresentation(type: NSPasteboard.PasteboardType.fileURL.rawValue, data: Data(fileURL.utf8))
+
+        let classified = ClipboardMonitor.classify(item: pasteboardItem, representations: [representation])
+
+        #expect(classified.type == .files)
+        #expect(classified.text == "/Users/example/My File.txt")
+    }
+
     @MainActor @Test func selfCaptureChangeCountCanBeIgnored() throws {
         let board = NSPasteboard(name: .init("NabiraTests-\(UUID())"))
         let repo = try repository()

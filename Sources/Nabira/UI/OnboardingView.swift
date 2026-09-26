@@ -38,7 +38,7 @@ struct OnboardingView: View {
             Toggle("Launch Nabira at login", isOn: $state.launchAtLogin)
                 .onChange(of: state.launchAtLogin) { _, enabled in try? enabled ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister() }
         case 2:
-            Text("⌘И").font(.system(size: 34, weight: .semibold, design: .rounded)).padding(12).background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+            Text("⌘B").font(.system(size: 34, weight: .semibold, design: .rounded)).padding(12).background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
         case 3:
             Toggle("Enable Direct Paste", isOn: $state.directPaste)
                 .onChange(of: state.directPaste) { _, enabled in if enabled { pasteCoordinator.requestAccessibility() } }
@@ -52,7 +52,7 @@ struct OnboardingView: View {
     private var message: String {
         ["Nabira keeps a searchable local history and lets you paste without leaving your keyboard.",
          "Keep Nabira available in the menu bar after every login.",
-         "Press Command–И anywhere to open Clipboard History.",
+         "Press Command–B anywhere to open Clipboard History.",
          "Accessibility is requested only if you enable automatic pasting. Manual paste always works.",
          "Clipboard contents stay on this Mac. Nabira has no account, cloud API, or content analytics.",
          "Sensitive apps and concealed pasteboard content are never recorded."][state.step]

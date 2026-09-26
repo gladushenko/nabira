@@ -73,7 +73,10 @@ final class ClipboardMonitor: ClipboardCapturing {
     }
 
     static func classify(item: NSPasteboardItem, representations: [PasteboardRepresentation]) -> (type: ClipboardContentType, text: String) {
-        if let files = item.propertyList(forType: .fileURL) as? String { return (.files, files) }
+        if let fileURL = item.propertyList(forType: .fileURL) as? String {
+            let path = URL(string: fileURL).flatMap { $0.isFileURL ? $0.path : nil } ?? fileURL
+            return (.files, path)
+        }
         if let url = item.string(forType: .URL) { return (.url, url) }
         if item.availableType(from: [.png, .tiff]) != nil { return (.image, "Image") }
         if let html = item.string(forType: .html) { return (.html, stripHTML(html)) }
