@@ -25,7 +25,18 @@ cp "$BIN" "$APP/Contents/MacOS/Nabira"
 /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :NSHumanReadableCopyright string 'Copyright © 2026 Nabira'" "$APP/Contents/Info.plist"
 xattr -cr "$APP"
-codesign --force --deep --sign "${CODE_SIGN_IDENTITY:--}" "$APP"
+SIGNING_IDENTITY="${CODE_SIGN_IDENTITY:--}"
+if [[ "$SIGNING_IDENTITY" == "-" ]]; then
+    # Keep the local development build recognizable to macOS privacy services
+    # after its executable changes. A certificate-signed release gets its
+    # normal designated requirement from the signing identity instead.
+    codesign --force --deep --sign - \
+        --identifier com.nabira.app \
+        --requirements '=designated => identifier "com.nabira.app"' \
+        "$APP"
+else
+    codesign --force --deep --sign "$SIGNING_IDENTITY" "$APP"
+fi
 mkdir -p "$ROOT/dist"
 rm -rf "$FINAL_APP"
 ditto --noextattr --noqtn "$APP" "$FINAL_APP"

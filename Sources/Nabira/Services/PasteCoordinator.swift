@@ -7,9 +7,7 @@ final class PasteCoordinator: TextInserting {
     private let pasteboard: NSPasteboard
     private weak var monitor: ClipboardMonitor?
     private let settings: AppSettings
-    var targetApplication: NSRunningApplication?
-    private var targetAccessibilityApplication: AXUIElement?
-    private var targetFocusedElement: AXUIElement?
+    private var targetApplication: NSRunningApplication?
     var onNotice: ((String) -> Void)?
 
     init(pasteboard: NSPasteboard = .general, monitor: ClipboardMonitor, settings: AppSettings) {
@@ -22,16 +20,6 @@ final class PasteCoordinator: TextInserting {
         guard let application = NSWorkspace.shared.frontmostApplication,
               application.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return }
         targetApplication = application
-
-        let accessibilityApplication = AXUIElementCreateApplication(application.processIdentifier)
-        targetAccessibilityApplication = accessibilityApplication
-        var focusedElement: CFTypeRef?
-        if AXUIElementCopyAttributeValue(accessibilityApplication, kAXFocusedUIElementAttribute as CFString, &focusedElement) == .success,
-           let focusedElement {
-            targetFocusedElement = (focusedElement as! AXUIElement)
-        } else {
-            targetFocusedElement = nil
-        }
     }
 
     func paste(_ item: ClipboardItem, asPlainText: Bool) async -> PasteResult {
@@ -54,31 +42,14 @@ final class PasteCoordinator: TextInserting {
             return .copiedPermissionNeeded
         }
         guard let target = targetApplication else { return .failed("No target application") }
-        target.activate(options: [.activateAllWindows])
-        if let targetAccessibilityApplication {
-            AXUIElementSetAttributeValue(targetAccessibilityApplication, kAXFrontmostAttribute as CFString, kCFBooleanTrue)
+        guard NSWorkspace.shared.frontmostApplication?.processIdentifier == target.processIdentifier else {
+            return .failed("The previous application is no longer active")
         }
-        for _ in 0..<20 where !target.isActive {
-            try? await Task.sleep(for: .milliseconds(25))
-        }
-        if let targetFocusedElement {
-            AXUIElementSetAttributeValue(targetFocusedElement, kAXFocusedAttribute as CFString, kCFBooleanTrue)
-        }
-        try? await Task.sleep(for: .milliseconds(100))
+        try? await Task.sleep(for: .milliseconds(150))
 
-        if let text = item.plainText {
-            guard let targetFocusedElement,
-                  AXUIElementSetAttributeValue(targetFocusedElement, kAXSelectedTextAttribute as CFString, text as CFTypeRef) == .success else {
-                return .failed("Could not insert text into the focused field")
-            }
-            if settings.restoreClipboard {
-                restore(backup)
-                monitor?.ignore(changeCount: pasteboard.changeCount)
-            }
-            return .inserted
+        guard postCommandV() else {
+            return .failed("Could not send paste command")
         }
-
-        postCommandV()
         if settings.restoreClipboard {
             try? await Task.sleep(for: .milliseconds(350))
             restore(backup)
@@ -92,12 +63,20 @@ final class PasteCoordinator: TextInserting {
         AXIsProcessTrustedWithOptions(options)
     }
 
-    private func postCommandV() {
-        guard let source = CGEventSource(stateID: .hidSystemState),
+    private func postCommandV() -> Bool {
+        guard let source = CGEventSource(stateID: .combinedSessionState),
               let down = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: true),
-              let up = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: false) else { return }
-        down.flags = .maskCommand; up.flags = .maskCommand
-        down.post(tap: .cghidEventTap); up.post(tap: .cghidEventTap)
+              let up = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: false) else { return false }
+        source.setLocalEventsFilterDuringSuppressionState(
+            [.permitLocalMouseEvents, .permitSystemDefinedEvents],
+            state: .eventSuppressionStateSuppressionInterval
+        )
+        let commandFlag = CGEventFlags(rawValue: CGEventFlags.maskCommand.rawValue | 0x000008)
+        down.flags = commandFlag
+        up.flags = commandFlag
+        down.post(tap: .cghidEventTap)
+        up.post(tap: .cghidEventTap)
+        return true
     }
 
     private func captureCurrentPasteboard() -> [PasteboardRepresentation] {

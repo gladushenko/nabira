@@ -2,7 +2,7 @@ import AppKit
 import Carbon
 import SwiftUI
 
-private final class ClipboardHistoryWindow: NSWindow {
+private final class ClipboardHistoryWindow: NSPanel {
     var dismiss: (() -> Void)?
 
     override func sendEvent(_ event: NSEvent) {
@@ -100,12 +100,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if libraryWindow == nil {
             let window = ClipboardHistoryWindow(
                 contentRect: NSRect(origin: .zero, size: NSSize(width: 760, height: 500)),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                styleMask: [.titled, .closable, .miniaturizable, .resizable, .nonactivatingPanel],
                 backing: .buffered,
                 defer: false
             )
             window.title = "Clipboard History"
             window.isReleasedWhenClosed = false
+            window.isFloatingPanel = true
+            window.hidesOnDeactivate = false
+            window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
             window.dismiss = { [weak window] in window?.orderOut(nil) }
             window.contentView = NSHostingView(rootView: LibraryView(model: services.libraryModel) { [weak window] in window?.orderOut(nil) })
             libraryWindow = window
@@ -113,7 +116,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             libraryWindow?.contentMinSize = NSSize(width: 600, height: 360)
         }
         positionLibraryWindow()
-        show(libraryWindow)
+        libraryWindow?.orderFrontRegardless()
+        libraryWindow?.makeKey()
         DispatchQueue.main.async { [weak libraryWindow] in libraryWindow?.makeFirstResponder(nil) }
     }
 
