@@ -1,28 +1,43 @@
 import AppKit
 import SwiftUI
 
+@MainActor private final class ClipboardRowState: ObservableObject {
+    @Published var isHovering = false
+}
+
 struct SourceIcon: View {
     let item: ClipboardItem
+    private let containerSize: CGFloat = 70
+    private let cornerRadius: CGFloat = 6
 
     var body: some View {
-        Group {
+        ZStack {
             if let imagePreview {
                 Image(nsImage: imagePreview)
                     .resizable()
-                    .scaledToFill()
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                    .overlay { RoundedRectangle(cornerRadius: 6).stroke(.separator, lineWidth: 1) }
+                    .scaledToFit()
+                    .frame(width: containerSize, height: containerSize)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+                    .overlay { RoundedRectangle(cornerRadius: cornerRadius).stroke(.separator, lineWidth: 1) }
                     .accessibilityLabel("Image preview")
             } else if let bundleID = item.sourceBundleID, let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
                 Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
-                    .resizable().aspectRatio(contentMode: .fit)
+                    .resizable()
+                    .scaledToFit()
+                    .padding(3)
                     .accessibilityLabel(item.sourceAppName ?? "Unknown application")
             } else {
-                Image(systemName: iconName).resizable().aspectRatio(contentMode: .fit).padding(3)
+                Image(systemName: iconName)
+                    .resizable()
+                    .scaledToFit()
+                    .padding(3)
                     .accessibilityLabel(item.sourceAppName ?? "Unknown application")
             }
         }
-        .frame(width: 48, height: 48)
+        .frame(width: containerSize, height: containerSize)
+        .fixedSize()
+        .clipped()
     }
 
     private var imagePreview: NSImage? {
@@ -45,6 +60,7 @@ struct ClipboardRow: View {
     let item: ClipboardItem
     let select: () -> Void
     let togglePin: () -> Void
+    @StateObject private var state = ClipboardRowState()
 
     var body: some View {
         HStack(spacing: 14) {
@@ -58,7 +74,7 @@ struct ClipboardRow: View {
                     }
                     .font(.callout).foregroundStyle(.secondary)
                     Text(displayedContent)
-                        .font(.title3)
+                        .font(.title2)
                         .lineLimit(2)
                 }
                 Spacer(minLength: 4)
@@ -72,9 +88,17 @@ struct ClipboardRow: View {
                     .font(.title3)
             }
             .buttonStyle(.borderless)
+            .padding(.trailing, 14)
             .help(item.isPinned ? "Unpin" : "Pin")
         }
         .padding(.vertical, 7)
+        .contentShape(Rectangle())
+        .background {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(state.isHovering ? Color.accentColor.opacity(0.12) : Color.clear)
+        }
+        .onHover { state.isHovering = $0 }
+        .animation(.easeOut(duration: 0.12), value: state.isHovering)
     }
 
     private var displayedContent: String {

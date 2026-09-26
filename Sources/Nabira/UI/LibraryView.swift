@@ -26,6 +26,7 @@ struct LibraryView: View {
                             Label(filter.rawValue, systemImage: icon(for: filter))
                                 .font(.body)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .contentShape(Rectangle())
                                 .foregroundStyle(model.filter == filter ? Color.white : Color.primary)
                                 .background {
                                     if model.filter == filter {

@@ -4,6 +4,64 @@ import SwiftUI
 
 private final class ClipboardHistoryWindow: NSPanel {
     var dismiss: (() -> Void)?
+    private var isDismissing = false
+    private var restingFrame: NSRect?
+
+    func presentAnimated() {
+        isDismissing = false
+        let finalFrame = frame
+        restingFrame = finalFrame
+        alphaValue = 0
+        setFrame(scaledFrame(from: finalFrame), display: false)
+        orderFrontRegardless()
+        makeKey()
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.16
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            animator().alphaValue = 1
+            animator().setFrame(finalFrame, display: true)
+        }
+    }
+
+    func dismissAnimated() {
+        guard isVisible, !isDismissing else { return }
+        isDismissing = true
+        let finalFrame = restingFrame ?? frame
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.07
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            animator().setFrame(horizontallyScaledFrame(from: finalFrame, scale: 1.025), display: true)
+        } completionHandler: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.12
+                    context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+                    animator().alphaValue = 0
+                    animator().setFrame(horizontallyScaledFrame(from: finalFrame, scale: 0.92), display: true)
+                } completionHandler: { [weak self] in
+                    Task { @MainActor [weak self] in
+                        guard let self else { return }
+                        orderOut(nil)
+                        setFrame(finalFrame, display: false)
+                        alphaValue = 1
+                        isDismissing = false
+                    }
+                }
+            }
+        }
+    }
+
+    private func horizontallyScaledFrame(from frame: NSRect, scale: CGFloat) -> NSRect {
+        let width = frame.width * scale
+        return NSRect(x: frame.midX - width / 2, y: frame.minY, width: width, height: frame.height)
+    }
+
+    private func scaledFrame(from frame: NSRect) -> NSRect {
+        frame.insetBy(dx: frame.width * 0.015, dy: frame.height * 0.015)
+    }
 
     override func sendEvent(_ event: NSEvent) {
         if event.type == .keyDown, event.keyCode == 53 {
@@ -52,7 +110,7 @@ final class AppServices {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var services: AppServices?
     private var statusItem: NSStatusItem?
-    private var libraryWindow: NSWindow?
+    private var libraryWindow: ClipboardHistoryWindow?
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
 
@@ -91,7 +149,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc private func openLibrary() {
         guard let services else { return }
         if libraryWindow?.isVisible == true {
-            libraryWindow?.orderOut(nil)
+            libraryWindow?.dismissAnimated()
             return
         }
         services.pasteCoordinator.captureTarget()
@@ -99,7 +157,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         services.libraryModel.query = ""
         if libraryWindow == nil {
             let window = ClipboardHistoryWindow(
-                contentRect: NSRect(origin: .zero, size: NSSize(width: 760, height: 500)),
+                contentRect: NSRect(origin: .zero, size: NSSize(width: 720, height: 500)),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable, .nonactivatingPanel],
                 backing: .buffered,
                 defer: false
@@ -108,23 +166,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.isReleasedWhenClosed = false
             window.isFloatingPanel = true
             window.hidesOnDeactivate = false
+            window.animationBehavior = .none
             window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
-            window.dismiss = { [weak window] in window?.orderOut(nil) }
-            window.contentView = NSHostingView(rootView: LibraryView(model: services.libraryModel) { [weak window] in window?.orderOut(nil) })
+            window.dismiss = { [weak window] in window?.dismissAnimated() }
+            window.contentView = NSHostingView(rootView: LibraryView(model: services.libraryModel) { [weak window] in window?.dismissAnimated() })
             libraryWindow = window
             libraryWindow?.delegate = self
             libraryWindow?.contentMinSize = NSSize(width: 600, height: 360)
         }
         positionLibraryWindow()
-        libraryWindow?.orderFrontRegardless()
-        libraryWindow?.makeKey()
+        libraryWindow?.presentAnimated()
         DispatchQueue.main.async { [weak libraryWindow] in libraryWindow?.makeFirstResponder(nil) }
     }
 
     private func positionLibraryWindow() {
         guard let window = libraryWindow, let screen = NSScreen.main ?? NSScreen.screens.first else { return }
         let visibleFrame = screen.visibleFrame
-        let size = NSSize(width: min(760, visibleFrame.width), height: visibleFrame.height / 2)
+        let width = min(max(visibleFrame.width * 0.30, 600), 720)
+        let size = NSSize(width: width, height: visibleFrame.height * 0.55)
         let origin = NSPoint(
             x: visibleFrame.midX - size.width / 2,
             y: visibleFrame.midY - size.height / 2
@@ -134,7 +193,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func windowDidResignKey(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window === libraryWindow else { return }
-        window.orderOut(nil)
+        libraryWindow?.dismissAnimated()
     }
     @objc private func openSettings() {
         guard let services else { return }
