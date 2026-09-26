@@ -55,7 +55,6 @@ struct ClipboardRow: View {
                         Text(item.contentType.label)
                         Text("•")
                         Text(relativeAge)
-                        if item.copyCount > 1 { Text("• \(item.copyCount)×") }
                     }
                     .font(.callout).foregroundStyle(.secondary)
                     Text(displayedContent)
@@ -87,9 +86,9 @@ struct ClipboardRow: View {
 
     private var relativeAge: String {
         let totalMinutes = max(0, Int(Date().timeIntervalSince(item.lastCopiedAt))) / 60
-        if totalMinutes < 1 { return "Less than a minute" }
-        if totalMinutes < 60 { return "\(totalMinutes) min" }
-        return "\(totalMinutes / 60) h \(totalMinutes % 60) min"
+        if totalMinutes < 1 { return "Less than a minute ago" }
+        if totalMinutes < 60 { return "\(totalMinutes) min ago" }
+        return "\(totalMinutes / 60) h \(totalMinutes % 60) min ago"
     }
 }
 

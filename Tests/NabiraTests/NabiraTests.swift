@@ -16,6 +16,13 @@ private func repository() throws -> SQLiteClipboardRepository {
 }
 
 @Suite struct NabiraTests {
+    @Test func textFormatsShareTheTextLabel() {
+        #expect(ClipboardContentType.text.label == "Text")
+        #expect(ClipboardContentType.richText.label == "Text")
+        #expect(ClipboardContentType.html.label == "Text")
+        #expect(ClipboardContentType.url.label == "Link")
+    }
+
     @Test func deduplicatesAndUpdatesRecency() throws {
         let repo = try repository()
         let first = makeItem("same", date: Date(timeIntervalSince1970: 1))
@@ -71,9 +78,8 @@ private func repository() throws -> SQLiteClipboardRepository {
 
     @Test func textTransformations() throws {
         let transformer = TextTransformer()
-        #expect(try transformer.transform("  a   b  ", using: .trim) == "a   b")
-        #expect(try transformer.transform("a   b", using: .collapseSpaces) == "a b")
-        #expect(try transformer.transform("a\n \nb", using: .removeEmptyLines) == "a\nb")
+        #expect(try transformer.transform("  a   b  ", using: .collapseSpaces) == "a b")
+        #expect(try transformer.transform("  Nabira   is   awesome  ", using: .spacesToUnderscores) == "Nabira_is_awesome")
         #expect(try transformer.transform("{\"b\":2,\"a\":1}", using: .jsonMinify) == "{\"a\":1,\"b\":2}")
     }
 

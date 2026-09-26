@@ -10,29 +10,50 @@ struct LibraryView: View {
     @ObservedObject var model: HistoryViewModel
     let close: () -> Void
     @StateObject private var state = LibraryLocalState()
+    private let controlHeight: CGFloat = 28
+    private let controlCornerRadius: CGFloat = 10
+    private let controlHorizontalPadding: CGFloat = 18
+    private let controlVerticalSpacing: CGFloat = 8
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                Picker("Category", selection: $model.filter) {
+                HStack(spacing: 2) {
                     ForEach(HistoryFilter.allCases) { filter in
-                        Label(filter.rawValue, systemImage: icon(for: filter)).tag(filter)
+                        Button {
+                            model.filter = filter
+                        } label: {
+                            Label(filter.rawValue, systemImage: icon(for: filter))
+                                .font(.body)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .foregroundStyle(model.filter == filter ? Color.white : Color.primary)
+                                .background {
+                                    if model.filter == filter {
+                                        RoundedRectangle(cornerRadius: controlCornerRadius - 2)
+                                            .fill(Color.accentColor)
+                                    }
+                                }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(model.filter == filter ? .isSelected : [])
                     }
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-
-                Divider()
+                .padding(2)
+                .frame(height: controlHeight)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: controlCornerRadius))
+                .padding(.horizontal, controlHorizontalPadding)
+                .padding(.top, controlVerticalSpacing + 3)
+                .padding(.bottom, controlVerticalSpacing + 3)
 
                 HStack {
                     Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                     TextField("Search", text: $model.query).textFieldStyle(.plain)
                 }
-                .padding(10)
-
-                Divider()
+                .padding(.horizontal, 8)
+                .frame(height: controlHeight)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: controlCornerRadius))
+                .padding(.horizontal, controlHorizontalPadding)
+                .padding(.bottom, controlVerticalSpacing + 3)
 
                 if model.items.isEmpty {
                     EmptyHistoryView()
@@ -47,11 +68,15 @@ struct LibraryView: View {
                         )
                             .contextMenu {
                                 Button("Paste") { pasteAndClose(item) }
-                                Button("Paste as Plain Text") { pasteAndClose(item, plain: true) }
                                 if item.plainText != nil {
                                     Menu("Transform and Paste") {
-                                        ForEach(TextTransformation.allCases.filter { $0 != .plain }) { transformation in
-                                            Button(transformation.rawValue) { transformPasteAndClose(item, using: transformation) }
+                                        ForEach(TextTransformation.allCases) { transformation in
+                                            Button {
+                                                transformPasteAndClose(item, using: transformation)
+                                            } label: {
+                                                Text(transformation.rawValue)
+                                                Text(transformation.example)
+                                            }
                                         }
                                     }
                                 }

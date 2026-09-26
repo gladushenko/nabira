@@ -144,7 +144,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         guard let services else { return }
         let alert = NSAlert()
         alert.messageText = "Clear all clipboard history?"
-        alert.informativeText = "All items, including pinned items, will be permanently deleted. This action cannot be undone."
+        alert.informativeText = "All items, including pinned items, will be permanently deleted."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Clear All")
         alert.addButton(withTitle: "Cancel")

@@ -7,11 +7,14 @@ struct TextTransformer: ContentTransforming {
         case .uppercase: return text.uppercased()
         case .lowercase: return text.lowercased()
         case .capitalize: return text.capitalized
-        case .trim: return text.trimmingCharacters(in: .whitespacesAndNewlines)
         case .collapseSpaces:
-            return text.replacingOccurrences(of: #"[ \t]+"#, with: " ", options: .regularExpression)
-        case .removeEmptyLines:
-            return text.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.joined(separator: "\n")
+            return text
+                .replacingOccurrences(of: #"[ \t]+"#, with: " ", options: .regularExpression)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        case .spacesToUnderscores:
+            return text
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: #"\s+"#, with: "_", options: .regularExpression)
         case .urlEncode:
             guard let result = text.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else { throw NabiraError.invalidTransformation }
             return result

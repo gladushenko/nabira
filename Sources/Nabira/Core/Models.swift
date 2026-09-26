@@ -6,9 +6,7 @@ enum ClipboardContentType: String, Codable, CaseIterable, Sendable {
 
     var label: String {
         switch self {
-        case .text: "Text"
-        case .richText: "Rich Text"
-        case .html: "HTML"
+        case .text, .richText, .html: "Text"
         case .url: "Link"
         case .image: "Image"
         case .files: "Files"
@@ -65,17 +63,31 @@ enum AppAppearance: String, CaseIterable, Identifiable, Sendable {
 
 enum TextTransformation: String, CaseIterable, Identifiable, Sendable {
     case plain = "Plain Text"
-    case uppercase = "UPPERCASE"
-    case lowercase = "lowercase"
+    case uppercase = "Uppercase"
+    case lowercase = "Lowercase"
     case capitalize = "Capitalize Words"
-    case trim = "Trim Whitespace"
-    case collapseSpaces = "Collapse Repeated Spaces"
-    case removeEmptyLines = "Remove Empty Lines"
+    case collapseSpaces = "Normalize Whitespace"
+    case spacesToUnderscores = "Spaces to Underscores"
     case urlEncode = "URL Encode"
     case urlDecode = "URL Decode"
     case jsonPretty = "JSON Pretty Print"
     case jsonMinify = "JSON Minify"
     var id: String { rawValue }
+
+    var example: String {
+        switch self {
+        case .plain: "Pastes Nabira text without formatting"
+        case .uppercase: "Nabira is awesome → NABIRA IS AWESOME"
+        case .lowercase: "NABIRA IS AWESOME → nabira is awesome"
+        case .capitalize: "nabira is awesome → Nabira Is Awesome"
+        case .collapseSpaces: "  Nabira   is   awesome  → Nabira is awesome"
+        case .spacesToUnderscores: "Nabira   is   awesome → Nabira_is_awesome"
+        case .urlEncode: "Nabira is awesome → Nabira%20is%20awesome"
+        case .urlDecode: "Nabira%20is%20awesome → Nabira is awesome"
+        case .jsonPretty: "Compact JSON → indented JSON"
+        case .jsonMinify: "Indented JSON → compact JSON"
+        }
+    }
 }
 
 enum NabiraError: LocalizedError {
