@@ -198,7 +198,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc private func openSettings() {
         guard let services else { return }
         if settingsWindow == nil {
-            settingsWindow = makeWindow(title: "Nabira Settings", size: NSSize(width: 620, height: 430), rootView: SettingsView(settings: services.settings, model: services.libraryModel))
+            settingsWindow = makeWindow(title: "Nabira Settings", size: NSSize(width: 760, height: 520), rootView: SettingsView(settings: services.settings, model: services.libraryModel))
         }
         show(settingsWindow)
     }

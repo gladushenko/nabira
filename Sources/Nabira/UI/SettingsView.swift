@@ -2,9 +2,26 @@ import AppKit
 import ServiceManagement
 import SwiftUI
 
+private enum SettingsModule: String, CaseIterable, Identifiable {
+    case general = "General"
+    case clipboard = "Clipboard"
+    case permissions = "Permissions"
+
+    var id: Self { self }
+
+    var icon: String {
+        switch self {
+        case .general: "gearshape"
+        case .clipboard: "clipboard"
+        case .permissions: "lock.shield"
+        }
+    }
+}
+
 @MainActor private final class SettingsLocalState: ObservableObject {
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
     @Published var excludedID = ""
+    @Published var selection: SettingsModule? = .general
 }
 
 struct SettingsView: View {
@@ -13,46 +30,96 @@ struct SettingsView: View {
     @StateObject private var state = SettingsLocalState()
 
     var body: some View {
-        TabView {
+        NavigationSplitView {
+            List(SettingsModule.allCases, selection: selectionBinding) { module in
+                Label(module.rawValue, systemImage: module.icon)
+                    .tag(module)
+            }
+            .navigationTitle("Settings")
+            .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 220)
+        } detail: {
+            settingsDetail
+                .navigationTitle(selectedModule.rawValue)
+                .toggleStyle(.switch)
+        }
+        .frame(minWidth: 760, minHeight: 520)
+        .toolbar(.hidden, for: .windowToolbar)
+    }
+
+    private var selectedModule: SettingsModule {
+        state.selection ?? .general
+    }
+
+    private var selectionBinding: Binding<SettingsModule?> {
+        Binding(
+            get: { state.selection },
+            set: { selection in
+                DispatchQueue.main.async {
+                    state.selection = selection
+                }
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var settingsDetail: some View {
+        switch selectedModule {
+        case .general:
             Form {
-                Toggle("Launch at Login", isOn: $state.launchAtLogin).onChange(of: state.launchAtLogin) { _, enabled in updateLaunchAtLogin(enabled) }
+                Toggle("Launch at Login", isOn: $state.launchAtLogin)
+                    .controlSize(.large)
+                    .onChange(of: state.launchAtLogin) { _, enabled in updateLaunchAtLogin(enabled) }
                 Toggle("Show in Dock", isOn: $settings.showInDock)
+                    .controlSize(.large)
                 Picker("Appearance", selection: $settings.appearance) { ForEach(AppAppearance.allCases) { Text($0.rawValue).tag($0) } }
-                LabeledContent("Global shortcut", value: "⌘B")
-            }.padding().tabItem { Label("General", systemImage: "gear") }
+            }
+            .formStyle(.grouped)
 
+        case .clipboard:
             Form {
-                Stepper("Maximum items: \(settings.maxItems)", value: $settings.maxItems, in: 100...50_000, step: 100)
-                Stepper("Retention: \(settings.retentionDays) days", value: $settings.retentionDays, in: 1...365)
-                Stepper("Maximum item size: \(settings.maxItemMB) MB", value: $settings.maxItemMB, in: 1...500)
-                Toggle("Save images", isOn: $settings.captureImages)
-                Toggle("Show pinned items first", isOn: $settings.showPinnedFirst)
-            }.padding().tabItem { Label("History", systemImage: "clock") }
+                Section("History") {
+                    Stepper("Maximum items: \(settings.maxItems)", value: $settings.maxItems, in: 100...50_000, step: 100)
+                    Stepper("Retention: \(settings.retentionDays) days", value: $settings.retentionDays, in: 1...365)
+                    Stepper("Maximum item size: \(settings.maxItemMB) MB", value: $settings.maxItemMB, in: 1...500)
+                    Toggle("Save images", isOn: $settings.captureImages)
+                        .controlSize(.large)
+                    Toggle("Show pinned items first", isOn: $settings.showPinnedFirst)
+                        .controlSize(.large)
+                }
 
-            Form {
-                Toggle("Restore clipboard after paste", isOn: $settings.restoreClipboard)
-                Button("Enable Direct Paste…") { model.pasteCoordinator.requestAccessibility() }
-                Text("Without Accessibility permission, Nabira copies the selected item so you can paste it manually.").font(.caption).foregroundStyle(.secondary)
-            }.padding().tabItem { Label("Paste", systemImage: "arrow.right.doc.on.clipboard") }
+                Section("Pasting") {
+                    Toggle("Restore clipboard after paste", isOn: $settings.restoreClipboard)
+                        .controlSize(.large)
+                }
 
-            Form {
-                Picker("One-time codes", selection: $settings.otpBehavior) { ForEach(OTPBehavior.allCases) { Text($0.rawValue).tag($0) } }
-                Section("Excluded applications") {
+                Section("Privacy") {
+                    Picker("One-time codes", selection: $settings.otpBehavior) { ForEach(OTPBehavior.allCases) { Text($0.rawValue).tag($0) } }
                     ForEach(Array(settings.excludedBundleIDs).sorted(), id: \.self) { id in HStack { Text(id); Spacer(); Button("Remove") { settings.excludedBundleIDs.remove(id) } } }
                     HStack { TextField("Bundle identifier", text: $state.excludedID); Button("Add") { if !state.excludedID.isEmpty { settings.excludedBundleIDs.insert(state.excludedID); state.excludedID = "" } } }
                 }
-            }.padding().tabItem { Label("Privacy", systemImage: "hand.raised") }
 
+                Section("Shortcuts") {
+                    LabeledContent("Clipboard History", value: "⌘B")
+                    LabeledContent("Paste plain text", value: "⌘↩")
+                    LabeledContent("Pin / unpin", value: "⌘S")
+                    LabeledContent("Delete", value: "⌘⌫")
+                    LabeledContent("Quick Look", value: "Space")
+                    Text("Shortcut recording and conflict detection are isolated behind ShortcutHandling for a future editor.").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .formStyle(.grouped)
+
+        case .permissions:
             Form {
-                LabeledContent("Clipboard History", value: "⌘B")
-                LabeledContent("Paste plain text", value: "⌘↩")
-                LabeledContent("Pin / unpin", value: "⌘S")
-                LabeledContent("Delete", value: "⌘⌫")
-                LabeledContent("Quick Look", value: "Space")
-                Text("Shortcut recording and conflict detection are isolated behind ShortcutHandling for a future editor.").font(.caption).foregroundStyle(.secondary)
-            }.padding().tabItem { Label("Shortcuts", systemImage: "keyboard") }
+                Section("Accessibility") {
+                    Button("Enable Direct Paste…") { model.pasteCoordinator.requestAccessibility() }
+                    Text("Accessibility permission lets Nabira paste the selected clipboard item into the previously active application.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .formStyle(.grouped)
         }
-        .frame(width: 620, height: 430)
     }
 
     private func updateLaunchAtLogin(_ enabled: Bool) {
