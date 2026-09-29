@@ -16,6 +16,11 @@ private func repository() throws -> SQLiteClipboardRepository {
 }
 
 @Suite struct NabiraTests {
+    @MainActor @Test func historyLimitIsFixedAtFiveHundredItems() {
+        #expect(AppSettings.maxItems == 500)
+        #expect(AppSettings.shared.snapshot.maxItems == 500)
+    }
+
     @Test func textFormatsShareTheTextLabel() {
         #expect(ClipboardContentType.text.label == "Text")
         #expect(ClipboardContentType.richText.label == "Text")
@@ -66,7 +71,7 @@ private func repository() throws -> SQLiteClipboardRepository {
 
     @Test func privacyFiltersAndOTP() {
         let guardService = PrivacyGuard()
-        let settings = SettingsSnapshot(maxItems: 5_000, retentionDays: 30, maxItemBytes: 10_000, captureImages: true,
+        let settings = SettingsSnapshot(maxItems: 5_000, retentionDays: 30, maxItemBytes: 10_000,
                                         excludedBundleIDs: ["blocked.app"], ignoredPasteboardTypes: ["org.nspasteboard.ConcealedType"], otpBehavior: .ignore)
         let rep = PasteboardRepresentation(type: "public.utf8-plain-text", data: Data("hello".utf8))
         #expect(guardService.decision(for: .init(representations: [rep], sourceBundleID: "blocked.app", searchableText: "hello", contentType: .text, byteCount: 5), settings: settings) == .ignore("Excluded application"))

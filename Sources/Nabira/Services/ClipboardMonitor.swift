@@ -61,7 +61,7 @@ final class ClipboardMonitor: ClipboardCapturing {
                                      contentHash: ContentHasher.hash(representations), pinnedOrder: nil)
         do {
             let stored = try repository.upsert(captured)
-            try repository.prune(maxItems: settings.maxItems, olderThan: Calendar.current.date(byAdding: .day, value: -settings.retentionDays, to: now)!)
+            try repository.prune(maxItems: AppSettings.maxItems, olderThan: Calendar.current.date(byAdding: .day, value: -settings.retentionDays, to: now)!)
             onCapture?(stored)
             if case .expire(let delay) = decision {
                 Task { [repository, id = stored.id] in

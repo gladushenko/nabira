@@ -78,11 +78,13 @@ struct SettingsView: View {
         case .clipboard:
             Form {
                 Section("History") {
-                    Stepper("Maximum items: \(settings.maxItems)", value: $settings.maxItems, in: 100...50_000, step: 100)
-                    Stepper("Retention: \(settings.retentionDays) days", value: $settings.retentionDays, in: 1...365)
+                    LabeledContent("Maximum items", value: "\(AppSettings.maxItems)")
+                    Picker("Retention", selection: $settings.retentionDays) {
+                        Text("1 week").tag(7)
+                        Text("2 weeks").tag(14)
+                        Text("1 month").tag(30)
+                    }
                     Stepper("Maximum item size: \(settings.maxItemMB) MB", value: $settings.maxItemMB, in: 1...500)
-                    Toggle("Save images", isOn: $settings.captureImages)
-                        .controlSize(.large)
                     Toggle("Show pinned items first", isOn: $settings.showPinnedFirst)
                         .controlSize(.large)
                 }
