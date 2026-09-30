@@ -79,18 +79,13 @@ struct SettingsView: View {
             Form {
                 Section("History") {
                     LabeledContent("Maximum items", value: "\(AppSettings.maxItems)")
+                    LabeledContent("Maximum pinned items", value: "\(AppSettings.maxPinnedItems)")
                     Picker("Retention", selection: $settings.retentionDays) {
                         Text("1 week").tag(7)
                         Text("2 weeks").tag(14)
                         Text("1 month").tag(30)
                     }
-                    Stepper("Maximum item size: \(settings.maxItemMB) MB", value: $settings.maxItemMB, in: 1...500)
                     Toggle("Show pinned items first", isOn: $settings.showPinnedFirst)
-                        .controlSize(.large)
-                }
-
-                Section("Pasting") {
-                    Toggle("Restore clipboard after paste", isOn: $settings.restoreClipboard)
                         .controlSize(.large)
                 }
 

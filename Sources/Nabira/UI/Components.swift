@@ -82,14 +82,16 @@ struct ClipboardRow: View {
             .contentShape(Rectangle())
             .onTapGesture(perform: select)
 
-            Button(action: togglePin) {
-                Label(item.isPinned ? "Unpin" : "Pin", systemImage: item.isPinned ? "pin.fill" : "pin")
-                    .labelStyle(.iconOnly)
-                    .font(.title3)
+            if item.contentType.canBePinned {
+                Button(action: togglePin) {
+                    Label(item.isPinned ? "Unpin" : "Pin", systemImage: item.isPinned ? "pin.fill" : "pin")
+                        .labelStyle(.iconOnly)
+                        .font(.title3)
+                }
+                .buttonStyle(.borderless)
+                .padding(.trailing, 14)
+                .help(item.isPinned ? "Unpin" : "Pin")
             }
-            .buttonStyle(.borderless)
-            .padding(.trailing, 14)
-            .help(item.isPinned ? "Unpin" : "Pin")
         }
         .padding(.vertical, 7)
         .contentShape(Rectangle())

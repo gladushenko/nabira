@@ -13,10 +13,9 @@ protocol ClipboardRepository: Sendable {
     func search(_ query: String, filter: HistoryFilter, limit: Int) throws -> [ClipboardItem]
     func item(id: UUID) throws -> ClipboardItem?
     func setPinned(_ pinned: Bool, id: UUID) throws
-    func rename(id: UUID, title: String) throws
     func delete(id: UUID) throws
     func clear(since: Date?, includePinned: Bool) throws
-    func prune(maxItems: Int, olderThan: Date) throws
+    func prune(maxItems: Int, maxBytes: Int, olderThan: Date) throws
 }
 
 protocol SearchProviding: Sendable {

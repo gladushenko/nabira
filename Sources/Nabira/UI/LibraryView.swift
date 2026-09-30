@@ -1,15 +1,9 @@
 import AppKit
 import SwiftUI
 
-@MainActor private final class LibraryLocalState: ObservableObject {
-    @Published var renaming: ClipboardItem?
-    @Published var newTitle = ""
-}
-
 struct LibraryView: View {
     @ObservedObject var model: HistoryViewModel
     let close: () -> Void
-    @StateObject private var state = LibraryLocalState()
     private let controlHeight: CGFloat = 28
     private let controlCornerRadius: CGFloat = 10
     private let controlHorizontalPadding: CGFloat = 18
@@ -70,6 +64,7 @@ struct LibraryView: View {
                             .contextMenu {
                                 Button("Paste") { pasteAndClose(item) }
                                 if item.plainText != nil {
+                                    Button("Paste as Plain Text") { pasteAndClose(item, plain: true) }
                                     Menu("Transform and Paste") {
                                         ForEach(TextTransformation.allCases) { transformation in
                                             Button {
@@ -81,8 +76,9 @@ struct LibraryView: View {
                                         }
                                     }
                                 }
-                                Button(item.isPinned ? "Unpin" : "Pin") { model.togglePin(item) }
-                                if item.isPinned { Button("Rename…") { state.newTitle = item.title; state.renaming = item } }
+                                if item.contentType.canBePinned {
+                                    Button(item.isPinned ? "Unpin" : "Pin") { model.togglePin(item) }
+                                }
                                 Divider()
                                 Button("Delete", role: .destructive) { model.delete(item) }
                             }
@@ -93,10 +89,13 @@ struct LibraryView: View {
             .navigationTitle("Clipboard History")
         }
         .onAppear { model.limit = 5_000; model.reload() }
-        .alert("Rename Pinned Item", isPresented: Binding(get: { state.renaming != nil }, set: { if !$0 { state.renaming = nil } })) {
-            TextField("Name", text: $state.newTitle)
-            Button("Cancel", role: .cancel) { state.renaming = nil }
-            Button("Save") { if let item = state.renaming { try? model.repository.rename(id: item.id, title: state.newTitle); model.reload() }; state.renaming = nil }
+        .alert("Pin limit reached", isPresented: Binding(
+            get: { model.pinLimitMessage != nil },
+            set: { if !$0 { model.pinLimitMessage = nil } }
+        )) {
+            Button("OK") { model.pinLimitMessage = nil }
+        } message: {
+            Text(model.pinLimitMessage ?? "")
         }
     }
 

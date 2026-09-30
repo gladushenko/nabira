@@ -13,7 +13,8 @@ struct PrivacyGuard: PrivacyFiltering {
             types.contains(where: { type in Self.concealedMarkers.contains(where: { type.localizedCaseInsensitiveContains($0) }) }) {
             return .ignore("Private pasteboard type")
         }
-        if candidate.byteCount > settings.maxItemBytes { return .ignore("Item is too large") }
+        let maximumBytes = candidate.contentType == .image ? settings.maxImageBytes : settings.maxItemBytes
+        if candidate.byteCount > maximumBytes { return .ignore("Item is too large") }
         if Self.looksLikeOTP(candidate.searchableText) {
             switch settings.otpBehavior {
             case .ignore: return .ignore("Likely one-time code")

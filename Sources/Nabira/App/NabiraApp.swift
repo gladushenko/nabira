@@ -100,7 +100,7 @@ final class AppServices {
         let support = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true).appending(path: "Nabira")
         repository = try SQLiteClipboardRepository(path: support.appending(path: "history.sqlite3").path)
         monitor = ClipboardMonitor(repository: repository, privacy: PrivacyGuard(), settings: settings)
-        pasteCoordinator = PasteCoordinator(monitor: monitor, settings: settings)
+        pasteCoordinator = PasteCoordinator(monitor: monitor)
         libraryModel = HistoryViewModel(repository: repository, pasteCoordinator: pasteCoordinator)
         monitor.onCapture = { [weak libraryModel] _ in libraryModel?.reload() }
     }
@@ -193,6 +193,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func windowDidResignKey(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window === libraryWindow else { return }
+        guard services?.libraryModel.pinLimitMessage == nil else { return }
         libraryWindow?.dismissAnimated()
     }
     @objc private func openSettings() {

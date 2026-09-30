@@ -3,7 +3,6 @@ import Foundation
 struct TextTransformer: ContentTransforming {
     func transform(_ text: String, using transformation: TextTransformation) throws -> String {
         switch transformation {
-        case .plain: return text
         case .uppercase: return text.uppercased()
         case .lowercase: return text.lowercased()
         case .capitalize: return text.capitalized

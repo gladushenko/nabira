@@ -6,14 +6,12 @@ import Foundation
 final class PasteCoordinator: TextInserting {
     private let pasteboard: NSPasteboard
     private weak var monitor: ClipboardMonitor?
-    private let settings: AppSettings
     private var targetApplication: NSRunningApplication?
     var onNotice: ((String) -> Void)?
 
-    init(pasteboard: NSPasteboard = .general, monitor: ClipboardMonitor, settings: AppSettings) {
+    init(pasteboard: NSPasteboard = .general, monitor: ClipboardMonitor) {
         self.pasteboard = pasteboard
         self.monitor = monitor
-        self.settings = settings
     }
 
     func captureTarget() {
@@ -50,11 +48,9 @@ final class PasteCoordinator: TextInserting {
         guard postCommandV() else {
             return .failed("Could not send paste command")
         }
-        if settings.restoreClipboard {
-            try? await Task.sleep(for: .milliseconds(350))
-            restore(backup)
-            monitor?.ignore(changeCount: pasteboard.changeCount)
-        }
+        try? await Task.sleep(for: .milliseconds(350))
+        restore(backup)
+        monitor?.ignore(changeCount: pasteboard.changeCount)
         return .inserted
     }
 

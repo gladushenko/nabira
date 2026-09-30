@@ -45,6 +45,9 @@ final class SQLiteClipboardRepository: ClipboardRepository, SearchProviding, @un
           INSERT INTO clipboard_fts(id, searchable_text, title, source_app_name)
           VALUES (new.id, new.searchable_text, new.title, coalesce(new.source_app_name, ''));
         END;
+        UPDATE clipboard_items
+        SET is_pinned=0, pinned_order=NULL
+        WHERE content_type IN ('image','files') AND is_pinned=1;
         """)
     }
 
@@ -96,11 +99,21 @@ final class SQLiteClipboardRepository: ClipboardRepository, SearchProviding, @un
     }
 
     func setPinned(_ pinned: Bool, id: UUID) throws {
-        try locked { try run("UPDATE clipboard_items SET is_pinned=?, pinned_order=CASE WHEN ?=1 THEN coalesce((SELECT max(pinned_order)+1 FROM clipboard_items),0) ELSE NULL END WHERE id=?", binds: [.int(pinned ? 1 : 0), .int(pinned ? 1 : 0), .text(id.uuidString)]) }
-    }
-
-    func rename(id: UUID, title: String) throws {
-        try locked { try run("UPDATE clipboard_items SET title=? WHERE id=?", binds: [.text(title), .text(id.uuidString)]) }
+        try locked {
+            if pinned {
+                guard let item = try fetchOne("SELECT * FROM clipboard_items WHERE id=?", binds: [.text(id.uuidString)]),
+                      item.contentType.canBePinned else { return }
+                if item.isPinned { return }
+                let pinnedCount = try fetchInteger("SELECT count(*) FROM clipboard_items WHERE is_pinned=1")
+                guard pinnedCount < AppSettings.maxPinnedItems else {
+                    throw NabiraError.pinLimitReached(AppSettings.maxPinnedItems)
+                }
+            }
+            try run(
+                "UPDATE clipboard_items SET is_pinned=?, pinned_order=CASE WHEN ?=1 THEN coalesce((SELECT max(pinned_order)+1 FROM clipboard_items),0) ELSE NULL END WHERE id=? AND (?=0 OR content_type NOT IN ('image','files'))",
+                binds: [.int(pinned ? 1 : 0), .int(pinned ? 1 : 0), .text(id.uuidString), .int(pinned ? 1 : 0)]
+            )
+        }
     }
 
     func delete(id: UUID) throws {
@@ -116,10 +129,18 @@ final class SQLiteClipboardRepository: ClipboardRepository, SearchProviding, @un
         }
     }
 
-    func prune(maxItems: Int, olderThan: Date) throws {
+    func prune(maxItems: Int, maxBytes: Int, olderThan: Date) throws {
         try locked {
             try run("DELETE FROM clipboard_items WHERE is_pinned=0 AND last_copied_at<?", binds: [.double(olderThan.timeIntervalSince1970)])
             try run("DELETE FROM clipboard_items WHERE is_pinned=0 AND id NOT IN (SELECT id FROM clipboard_items WHERE is_pinned=0 ORDER BY last_copied_at DESC LIMIT ?)", binds: [.int(maxItems)])
+            try run("""
+                DELETE FROM clipboard_items WHERE id IN (
+                    SELECT id FROM (
+                        SELECT id, SUM(byte_count) OVER (ORDER BY last_copied_at DESC, id DESC) AS running_bytes
+                        FROM clipboard_items WHERE is_pinned=0
+                    ) WHERE running_bytes>?
+                )
+                """, binds: [.int(maxBytes)])
         }
     }
 
@@ -157,6 +178,15 @@ final class SQLiteClipboardRepository: ClipboardRepository, SearchProviding, @un
     }
 
     private func fetchOne(_ sql: String, binds: [Bind]) throws -> ClipboardItem? { try fetchMany(sql, binds: binds).first }
+
+    private func fetchInteger(_ sql: String, binds: [Bind] = []) throws -> Int {
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else { throw dbError() }
+        defer { sqlite3_finalize(statement) }
+        bind(binds, to: statement)
+        guard sqlite3_step(statement) == SQLITE_ROW else { throw dbError() }
+        return Int(sqlite3_column_int64(statement, 0))
+    }
 
     private func fetchMany(_ sql: String, binds: [Bind]) throws -> [ClipboardItem] {
         var statement: OpaquePointer?

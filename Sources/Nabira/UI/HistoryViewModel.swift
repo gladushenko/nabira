@@ -9,6 +9,7 @@ final class HistoryViewModel: ObservableObject {
     @Published var selection: UUID?
     @Published var notice: String?
     @Published var errorMessage: String?
+    @Published var pinLimitMessage: String?
 
     let repository: ClipboardRepository
     let pasteCoordinator: PasteCoordinator
@@ -56,8 +57,13 @@ final class HistoryViewModel: ObservableObject {
     }
 
     func togglePin(_ item: ClipboardItem) {
+        guard item.contentType.canBePinned else { return }
         do { try repository.setPinned(!item.isPinned, id: item.id); reload() }
-        catch { errorMessage = error.localizedDescription }
+        catch NabiraError.pinLimitReached {
+            pinLimitMessage = "You can pin up to \(AppSettings.maxPinnedItems) items."
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     func delete(_ item: ClipboardItem) {

@@ -18,6 +18,10 @@ private func repository() throws -> SQLiteClipboardRepository {
 @Suite struct NabiraTests {
     @MainActor @Test func historyLimitIsFixedAtFiveHundredItems() {
         #expect(AppSettings.maxItems == 500)
+        #expect(AppSettings.maxPinnedItems == 10)
+        #expect(AppSettings.defaultRetentionDays == 7)
+        #expect(AppSettings.maxHistoryBytes == 2 * 1_024 * 1_024 * 1_024)
+        #expect(AppSettings.maxImageBytes == 100 * 1_024 * 1_024)
         #expect(AppSettings.shared.snapshot.maxItems == 500)
     }
 
@@ -45,8 +49,55 @@ private func repository() throws -> SQLiteClipboardRepository {
         let old = makeItem("old", date: Date(timeIntervalSince1970: 1))
         _ = try repo.upsert(old)
         try repo.setPinned(true, id: old.id)
-        try repo.prune(maxItems: 1, olderThan: .now)
+        try repo.prune(maxItems: 1, maxBytes: 1, olderThan: .now)
         #expect(try repo.item(id: old.id) != nil)
+    }
+
+    @Test func pruningKeepsNewestItemsWithinStorageLimit() throws {
+        let repo = try repository()
+        let old = makeItem("12345", date: Date(timeIntervalSince1970: 1))
+        let new = makeItem("67890", date: Date(timeIntervalSince1970: 2))
+        _ = try repo.upsert(old)
+        _ = try repo.upsert(new)
+
+        try repo.prune(maxItems: 10, maxBytes: 5, olderThan: .distantPast)
+
+        #expect(try repo.item(id: old.id) == nil)
+        #expect(try repo.item(id: new.id) != nil)
+    }
+
+    @Test func imagesAndFilesCannotBePinned() throws {
+        let repo = try repository()
+        for type in [ClipboardContentType.image, .files] {
+            var item = makeItem(type.rawValue)
+            item.contentType = type
+            _ = try repo.upsert(item)
+
+            try repo.setPinned(true, id: item.id)
+
+            #expect(try repo.item(id: item.id)?.isPinned == false)
+        }
+    }
+
+    @Test func noMoreThanTenItemsCanBePinned() throws {
+        let repo = try repository()
+        for index in 0..<AppSettings.maxPinnedItems {
+            let item = makeItem("pinned \(index)")
+            _ = try repo.upsert(item)
+            try repo.setPinned(true, id: item.id)
+        }
+        let extra = makeItem("one too many")
+        _ = try repo.upsert(extra)
+
+        var reachedLimit = false
+        do {
+            try repo.setPinned(true, id: extra.id)
+        } catch NabiraError.pinLimitReached(let limit) {
+            reachedLimit = limit == AppSettings.maxPinnedItems
+        }
+
+        #expect(reachedLimit)
+        #expect(try repo.item(id: extra.id)?.isPinned == false)
     }
 
     @Test func clearAllRemovesPinnedAndUnpinnedItems() throws {
@@ -71,12 +122,14 @@ private func repository() throws -> SQLiteClipboardRepository {
 
     @Test func privacyFiltersAndOTP() {
         let guardService = PrivacyGuard()
-        let settings = SettingsSnapshot(maxItems: 5_000, retentionDays: 30, maxItemBytes: 10_000,
+        let settings = SettingsSnapshot(maxItems: 5_000, retentionDays: 30, maxItemBytes: 10_000, maxImageBytes: 100_000,
                                         excludedBundleIDs: ["blocked.app"], ignoredPasteboardTypes: ["org.nspasteboard.ConcealedType"], otpBehavior: .ignore)
         let rep = PasteboardRepresentation(type: "public.utf8-plain-text", data: Data("hello".utf8))
         #expect(guardService.decision(for: .init(representations: [rep], sourceBundleID: "blocked.app", searchableText: "hello", contentType: .text, byteCount: 5), settings: settings) == .ignore("Excluded application"))
         let secret = PasteboardRepresentation(type: "org.nspasteboard.ConcealedType", data: Data())
         #expect(guardService.decision(for: .init(representations: [secret], sourceBundleID: nil, searchableText: "secret", contentType: .text, byteCount: 0), settings: settings) == .ignore("Private pasteboard type"))
+        #expect(guardService.decision(for: .init(representations: [rep], sourceBundleID: nil, searchableText: "large text", contentType: .text, byteCount: 50_000), settings: settings) == .ignore("Item is too large"))
+        #expect(guardService.decision(for: .init(representations: [rep], sourceBundleID: nil, searchableText: "image", contentType: .image, byteCount: 50_000), settings: settings) == .allow)
         #expect(PrivacyGuard.looksLikeOTP("123456"))
         #expect(!PrivacyGuard.looksLikeOTP("invoice 123456"))
     }

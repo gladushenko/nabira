@@ -14,6 +14,10 @@ enum ClipboardContentType: String, Codable, CaseIterable, Sendable {
         case .unknown: "Item"
         }
     }
+
+    var canBePinned: Bool {
+        self != .image && self != .files
+    }
 }
 
 struct PasteboardRepresentation: Codable, Hashable, Sendable {
@@ -62,7 +66,6 @@ enum AppAppearance: String, CaseIterable, Identifiable, Sendable {
 }
 
 enum TextTransformation: String, CaseIterable, Identifiable, Sendable {
-    case plain = "Plain Text"
     case uppercase = "Uppercase"
     case lowercase = "Lowercase"
     case capitalize = "Capitalize Words"
@@ -76,7 +79,6 @@ enum TextTransformation: String, CaseIterable, Identifiable, Sendable {
 
     var example: String {
         switch self {
-        case .plain: "Pastes Nabira text without formatting"
         case .uppercase: "Nabira is awesome → NABIRA IS AWESOME"
         case .lowercase: "NABIRA IS AWESOME → nabira is awesome"
         case .capitalize: "nabira is awesome → Nabira Is Awesome"
@@ -94,12 +96,14 @@ enum NabiraError: LocalizedError {
     case database(String)
     case noPasteableContent
     case invalidTransformation
+    case pinLimitReached(Int)
 
     var errorDescription: String? {
         switch self {
         case .database(let message): "Database error: \(message)"
         case .noPasteableContent: "This item has no pasteable content."
         case .invalidTransformation: "The text cannot be transformed."
+        case .pinLimitReached(let limit): "You can pin up to \(limit) items."
         }
     }
 }
