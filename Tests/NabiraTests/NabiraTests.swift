@@ -16,13 +16,13 @@ private func repository() throws -> SQLiteClipboardRepository {
 }
 
 @Suite struct NabiraTests {
-    @MainActor @Test func historyLimitIsFixedAtFiveHundredItems() {
-        #expect(AppSettings.maxItems == 500)
+    @MainActor @Test func historyLimitIsFixedAtThreeHundredItems() {
+        #expect(AppSettings.maxItems == 300)
         #expect(AppSettings.maxPinnedItems == 10)
         #expect(AppSettings.defaultRetentionDays == 7)
         #expect(AppSettings.maxHistoryBytes == 2 * 1_024 * 1_024 * 1_024)
         #expect(AppSettings.maxImageBytes == 100 * 1_024 * 1_024)
-        #expect(AppSettings.shared.snapshot.maxItems == 500)
+        #expect(AppSettings.shared.snapshot.maxItems == 300)
     }
 
     @Test func textFormatsShareTheTextLabel() {

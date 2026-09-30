@@ -14,7 +14,7 @@ struct SettingsSnapshot: Sendable {
 @MainActor
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
-    static let maxItems = 500
+    static let maxItems = 300
     nonisolated static let maxPinnedItems = 10
     static let defaultRetentionDays = 7
     static let maxHistoryBytes = 2 * 1_024 * 1_024 * 1_024
@@ -25,7 +25,6 @@ final class AppSettings: ObservableObject {
     private let defaults = UserDefaults.standard
 
     @Published var retentionDays: Int { didSet { defaults.set(retentionDays, forKey: "retentionDays") } }
-    @Published var showPinnedFirst: Bool { didSet { defaults.set(showPinnedFirst, forKey: "showPinnedFirst") } }
     @Published var showInDock: Bool { didSet { defaults.set(showInDock, forKey: "showInDock"); applyDockPolicy() } }
     @Published var otpBehavior: OTPBehavior { didSet { defaults.set(otpBehavior.rawValue, forKey: "otpBehavior") } }
     @Published var appearance: AppAppearance { didSet { defaults.set(appearance.rawValue, forKey: "appearance"); applyAppearance() } }
@@ -34,13 +33,11 @@ final class AppSettings: ObservableObject {
     private init() {
         defaults.register(defaults: [
             "retentionDays": Self.defaultRetentionDays,
-            "showPinnedFirst": true,
             "showInDock": false,
             "otpBehavior": OTPBehavior.ignore.rawValue
         ])
         let storedRetentionDays = defaults.integer(forKey: "retentionDays")
         retentionDays = Self.retentionOptions.contains(storedRetentionDays) ? storedRetentionDays : Self.defaultRetentionDays
-        showPinnedFirst = defaults.bool(forKey: "showPinnedFirst")
         showInDock = defaults.bool(forKey: "showInDock")
         otpBehavior = OTPBehavior(rawValue: defaults.string(forKey: "otpBehavior") ?? "") ?? .ignore
         appearance = AppAppearance(rawValue: defaults.string(forKey: "appearance") ?? "") ?? .system

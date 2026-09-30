@@ -85,8 +85,6 @@ struct SettingsView: View {
                         Text("2 weeks").tag(14)
                         Text("1 month").tag(30)
                     }
-                    Toggle("Show pinned items first", isOn: $settings.showPinnedFirst)
-                        .controlSize(.large)
                 }
 
                 Section("Privacy") {
@@ -97,11 +95,6 @@ struct SettingsView: View {
 
                 Section("Shortcuts") {
                     LabeledContent("Clipboard History", value: "⌘B")
-                    LabeledContent("Paste plain text", value: "⌘↩")
-                    LabeledContent("Pin / unpin", value: "⌘S")
-                    LabeledContent("Delete", value: "⌘⌫")
-                    LabeledContent("Quick Look", value: "Space")
-                    Text("Shortcut recording and conflict detection are isolated behind ShortcutHandling for a future editor.").font(.caption).foregroundStyle(.secondary)
                 }
             }
             .formStyle(.grouped)
