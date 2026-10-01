@@ -110,6 +110,7 @@ final class AppServices {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var services: AppServices?
     private var statusItem: NSStatusItem?
+    private var clipboardHistoryMenuItem: NSMenuItem?
     private var libraryWindow: ClipboardHistoryWindow?
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
@@ -120,8 +121,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let services = try AppServices()
             self.services = services
             services.monitor.start()
-            // Key code 11 is the physical B key.
-            services.shortcuts.register(id: 1, keyCode: 11, modifiers: UInt32(cmdKey)) { [weak self] in self?.openLibrary() }
+            services.settings.onClipboardHistoryShortcutChange = { [weak self] shortcut in
+                self?.registerClipboardHistoryShortcut(shortcut)
+                self?.updateClipboardHistoryMenuShortcut(shortcut)
+            }
+            services.settings.onClipboardHistoryShortcutRecordingChange = { [weak self] isRecording in
+                guard let self, let services = self.services else { return }
+                if isRecording {
+                    services.shortcuts.unregister(id: 1)
+                    self.updateClipboardHistoryMenuShortcut(nil)
+                } else {
+                    self.registerClipboardHistoryShortcut(services.settings.clipboardHistoryShortcut)
+                    self.updateClipboardHistoryMenuShortcut(services.settings.clipboardHistoryShortcut)
+                }
+            }
+            registerClipboardHistoryShortcut(services.settings.clipboardHistoryShortcut)
             configureMenuBar()
             if !UserDefaults.standard.bool(forKey: "completedOnboarding") { showOnboarding() }
         } catch {
@@ -131,16 +145,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationWillTerminate(_ notification: Notification) { services?.monitor.stop(); services?.shortcuts.unregisterAll() }
 
+    private func registerClipboardHistoryShortcut(_ shortcut: GlobalShortcut) {
+        services?.shortcuts.register(id: 1, keyCode: shortcut.keyCode, modifiers: shortcut.modifiers) { [weak self] in
+            self?.openLibrary()
+        }
+    }
+
     private func configureMenuBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem?.button?.image = NSImage(systemSymbolName: "clipboard", accessibilityDescription: "Nabira")
         let menu = NSMenu()
-        menu.addItem(item("Clipboard History", action: #selector(openLibrary), key: "b"))
-        menu.addItem(item("Clear All History…", action: #selector(confirmClearHistory)))
+        let clipboardHistoryItem = item("Nabira Clipboard", action: #selector(openLibrary))
+        clipboardHistoryMenuItem = clipboardHistoryItem
+        updateClipboardHistoryMenuShortcut(services?.settings.clipboardHistoryShortcut)
+        menu.addItem(clipboardHistoryItem)
+        menu.addItem(item("Clear All Clipboard History…", action: #selector(confirmClearHistory)))
         menu.addItem(.separator())
         menu.addItem(item("Settings…", action: #selector(openSettings), key: ","))
         menu.addItem(item("Quit Nabira", action: #selector(quitNabira), key: "q"))
         statusItem?.menu = menu
+    }
+
+    private func updateClipboardHistoryMenuShortcut(_ shortcut: GlobalShortcut?) {
+        guard let item = clipboardHistoryMenuItem else { return }
+        guard let shortcut else {
+            item.keyEquivalent = ""
+            item.keyEquivalentModifierMask = []
+            return
+        }
+        item.keyEquivalent = menuKeyEquivalent(for: shortcut)
+        var modifiers: NSEvent.ModifierFlags = []
+        if shortcut.modifiers & UInt32(controlKey) != 0 { modifiers.insert(.control) }
+        if shortcut.modifiers & UInt32(optionKey) != 0 { modifiers.insert(.option) }
+        if shortcut.modifiers & UInt32(shiftKey) != 0 { modifiers.insert(.shift) }
+        if shortcut.modifiers & UInt32(cmdKey) != 0 { modifiers.insert(.command) }
+        item.keyEquivalentModifierMask = modifiers
+    }
+
+    private func menuKeyEquivalent(for shortcut: GlobalShortcut) -> String {
+        switch shortcut.keyCode {
+        case 36: return "\r"
+        case 48: return "\t"
+        case 49: return " "
+        case 51: return "\u{8}"
+        case 117: return "\u{7f}"
+        case 123: return String(UnicodeScalar(NSLeftArrowFunctionKey)!)
+        case 124: return String(UnicodeScalar(NSRightArrowFunctionKey)!)
+        case 125: return String(UnicodeScalar(NSDownArrowFunctionKey)!)
+        case 126: return String(UnicodeScalar(NSUpArrowFunctionKey)!)
+        default: return shortcut.keyLabel.lowercased()
+        }
     }
 
     private func item(_ title: String, action: Selector, key: String = "", modifiers: NSEvent.ModifierFlags = [.command]) -> NSMenuItem {

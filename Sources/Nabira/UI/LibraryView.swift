@@ -86,7 +86,7 @@ struct LibraryView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .navigationTitle("Clipboard History")
+            .navigationTitle("Nabira Clipboard")
         }
         .onAppear { model.limit = 5_000; model.reload() }
         .alert("Pin limit reached", isPresented: Binding(

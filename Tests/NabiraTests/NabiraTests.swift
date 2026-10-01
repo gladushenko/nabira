@@ -16,6 +16,11 @@ private func repository() throws -> SQLiteClipboardRepository {
 }
 
 @Suite struct NabiraTests {
+    @Test func defaultClipboardShortcutIsCommandB() {
+        #expect(GlobalShortcut.clipboardHistoryDefault.keyCode == 11)
+        #expect(GlobalShortcut.clipboardHistoryDefault.displayName == "⌘B")
+    }
+
     @MainActor @Test func historyLimitIsFixedAtThreeHundredItems() {
         #expect(AppSettings.maxItems == 300)
         #expect(AppSettings.maxPinnedItems == 10)

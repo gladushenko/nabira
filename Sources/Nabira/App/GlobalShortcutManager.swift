@@ -3,13 +3,14 @@ import Foundation
 
 @MainActor
 final class GlobalShortcutManager: ShortcutHandling {
-    private var refs: [EventHotKeyRef] = []
+    private var refs: [UInt32: EventHotKeyRef] = [:]
     private var handler: EventHandlerRef?
     private var actions: [UInt32: () -> Void] = [:]
 
     func registerDefaultShortcuts() { }
 
     func register(id: UInt32, keyCode: UInt32, modifiers: UInt32, action: @escaping () -> Void) {
+        unregister(id: id)
         actions[id] = action
         if handler == nil {
             var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: OSType(kEventHotKeyPressed))
@@ -25,11 +26,20 @@ final class GlobalShortcutManager: ShortcutHandling {
         }
         var ref: EventHotKeyRef?
         let hotKeyID = EventHotKeyID(signature: OSType(0x4E425241), id: id)
-        if RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &ref) == noErr, let ref { refs.append(ref) }
+        if RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &ref) == noErr, let ref {
+            refs[id] = ref
+        }
+    }
+
+    func unregister(id: UInt32) {
+        if let ref = refs.removeValue(forKey: id) {
+            _ = UnregisterEventHotKey(ref)
+        }
+        actions.removeValue(forKey: id)
     }
 
     func unregisterAll() {
-        refs.forEach { _ = UnregisterEventHotKey($0) }
+        refs.values.forEach { _ = UnregisterEventHotKey($0) }
         refs.removeAll(); actions.removeAll()
         if let handler { RemoveEventHandler(handler); self.handler = nil }
     }

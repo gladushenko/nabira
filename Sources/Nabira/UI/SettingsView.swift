@@ -1,10 +1,12 @@
 import AppKit
+import Carbon
 import ServiceManagement
 import SwiftUI
 
 private enum SettingsModule: String, CaseIterable, Identifiable {
     case general = "General"
     case clipboard = "Clipboard"
+    case shortcuts = "Shortcuts"
     case permissions = "Permissions"
 
     var id: Self { self }
@@ -13,6 +15,7 @@ private enum SettingsModule: String, CaseIterable, Identifiable {
         switch self {
         case .general: "gearshape"
         case .clipboard: "clipboard"
+        case .shortcuts: "keyboard"
         case .permissions: "lock.shield"
         }
     }
@@ -22,6 +25,117 @@ private enum SettingsModule: String, CaseIterable, Identifiable {
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
     @Published var excludedID = ""
     @Published var selection: SettingsModule? = .general
+    @Published var isRecordingShortcut = false
+    @Published var recordedShortcutDisplay: String?
+    @Published var shortcutValidationMessage: String?
+    private var shortcutMonitor: Any?
+    private var shortcutMouseMonitor: Any?
+    private var pendingShortcut: GlobalShortcut?
+    private var recordingDidChange: ((Bool) -> Void)?
+
+    func startRecordingShortcut(
+        recordingDidChange: @escaping (Bool) -> Void,
+        onRecord: @escaping (GlobalShortcut) -> Void
+    ) {
+        stopRecordingShortcut()
+        self.recordingDidChange = recordingDidChange
+        shortcutValidationMessage = nil
+        recordedShortcutDisplay = nil
+        pendingShortcut = nil
+        isRecordingShortcut = true
+        recordingDidChange(true)
+        shortcutMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
+            let keyCode = event.keyCode
+            let modifierFlags = event.modifierFlags.rawValue
+            let isKeyDown = event.type == .keyDown
+            let isRepeat = event.isARepeat
+            var shouldConsume = false
+            MainActor.assumeIsolated {
+                guard let self, self.isRecordingShortcut else { return }
+                shouldConsume = true
+                if isKeyDown, keyCode == 53 {
+                    self.stopRecordingShortcut()
+                    return
+                }
+                if isKeyDown {
+                    guard !isRepeat else { return }
+                    guard let shortcut = Self.shortcut(keyCode: keyCode, modifierFlags: modifierFlags) else {
+                        self.shortcutValidationMessage = "Include Command, Option, Control, or Shift."
+                        return
+                    }
+                    self.pendingShortcut = shortcut
+                    self.recordedShortcutDisplay = shortcut.displayName
+                    self.shortcutValidationMessage = nil
+                    return
+                }
+                if let shortcut = self.pendingShortcut, shortcut.keyCode == UInt32(keyCode) {
+                    onRecord(shortcut)
+                    self.stopRecordingShortcut()
+                }
+            }
+            return shouldConsume ? nil : event
+        }
+        shortcutMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
+            MainActor.assumeIsolated {
+                self?.stopRecordingShortcut()
+            }
+            return event
+        }
+    }
+
+    func stopRecordingShortcut() {
+        if let shortcutMonitor {
+            NSEvent.removeMonitor(shortcutMonitor)
+            self.shortcutMonitor = nil
+        }
+        if let shortcutMouseMonitor {
+            NSEvent.removeMonitor(shortcutMouseMonitor)
+            self.shortcutMouseMonitor = nil
+        }
+        isRecordingShortcut = false
+        pendingShortcut = nil
+        recordedShortcutDisplay = nil
+        recordingDidChange?(false)
+        recordingDidChange = nil
+    }
+
+    private static func shortcut(keyCode: UInt16, modifierFlags: UInt) -> GlobalShortcut? {
+        let flags = NSEvent.ModifierFlags(rawValue: modifierFlags).intersection(.deviceIndependentFlagsMask)
+        var modifiers: UInt32 = 0
+        if flags.contains(.command) { modifiers |= UInt32(cmdKey) }
+        if flags.contains(.option) { modifiers |= UInt32(optionKey) }
+        if flags.contains(.control) { modifiers |= UInt32(controlKey) }
+        if flags.contains(.shift) { modifiers |= UInt32(shiftKey) }
+        guard modifiers != 0 else { return nil }
+        return GlobalShortcut(
+            keyCode: UInt32(keyCode),
+            modifiers: modifiers,
+            keyLabel: keyLabel(for: keyCode)
+        )
+    }
+
+    private static func keyLabel(for keyCode: UInt16) -> String {
+        let ansiLabels: [UInt16: String] = [
+            0: "A", 1: "S", 2: "D", 3: "F", 4: "H", 5: "G", 6: "Z", 7: "X", 8: "C", 9: "V",
+            11: "B", 12: "Q", 13: "W", 14: "E", 15: "R", 16: "Y", 17: "T", 18: "1", 19: "2",
+            20: "3", 21: "4", 22: "6", 23: "5", 24: "=", 25: "9", 26: "7", 27: "−", 28: "8",
+            29: "0", 30: "]", 31: "O", 32: "U", 33: "[", 34: "I", 35: "P", 37: "L", 38: "J",
+            39: "'", 40: "K", 41: ";", 42: "\\", 43: ",", 44: "/", 45: "N", 46: "M", 47: ".", 50: "`"
+        ]
+        if let label = ansiLabels[keyCode] { return label }
+        switch keyCode {
+        case 36: return "↩"
+        case 48: return "⇥"
+        case 49: return "Space"
+        case 51: return "⌫"
+        case 117: return "⌦"
+        case 123: return "←"
+        case 124: return "→"
+        case 125: return "↓"
+        case 126: return "↑"
+        default: return "Key \(keyCode)"
+        }
+    }
 }
 
 struct SettingsView: View {
@@ -44,6 +158,7 @@ struct SettingsView: View {
         }
         .frame(minWidth: 760, minHeight: 520)
         .toolbar(.hidden, for: .windowToolbar)
+        .onDisappear { state.stopRecordingShortcut() }
     }
 
     private var selectedModule: SettingsModule {
@@ -94,7 +209,15 @@ struct SettingsView: View {
                 }
 
                 Section("Shortcuts") {
-                    LabeledContent("Clipboard History", value: "⌘B")
+                    clipboardHistoryShortcutSetting
+                }
+            }
+            .formStyle(.grouped)
+
+        case .shortcuts:
+            Form {
+                Section("Clipboard") {
+                    clipboardHistoryShortcutSetting
                 }
             }
             .formStyle(.grouped)
@@ -109,6 +232,38 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
+        }
+    }
+
+    @ViewBuilder
+    private var clipboardHistoryShortcutSetting: some View {
+        LabeledContent("Clipboard History") {
+            HStack(spacing: 12) {
+                Button(
+                    state.isRecordingShortcut
+                        ? state.recordedShortcutDisplay ?? "Press keys…"
+                        : settings.clipboardHistoryShortcut.displayName
+                ) {
+                    state.startRecordingShortcut(
+                        recordingDidChange: { settings.setClipboardHistoryShortcutRecording($0) },
+                        onRecord: { settings.clipboardHistoryShortcut = $0 }
+                    )
+                }
+                .tint(state.isRecordingShortcut ? .accentColor : nil)
+                Button {
+                    state.stopRecordingShortcut()
+                    settings.clipboardHistoryShortcut = .clipboardHistoryDefault
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                }
+                .disabled(settings.clipboardHistoryShortcut == .clipboardHistoryDefault)
+                .help("Reset to default")
+            }
+        }
+        if let message = state.shortcutValidationMessage {
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
