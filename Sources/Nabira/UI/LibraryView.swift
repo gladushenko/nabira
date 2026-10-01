@@ -5,6 +5,7 @@ struct LibraryView: View {
     @ObservedObject var model: HistoryViewModel
     @ObservedObject var settings: AppSettings
     let openSettings: () -> Void
+    let preview: (ClipboardItem) -> Void
     let close: () -> Void
     private let controlHeight: CGFloat = 28
     private let controlCornerRadius: CGFloat = 10
@@ -77,6 +78,7 @@ struct LibraryView: View {
                             showMetadata: settings.showClipboardMetadata,
                             pasteOnSingleClick: settings.pasteOnSingleClick,
                             select: { pasteAndClose(item) },
+                            preview: { preview(item) },
                             toggleFavorite: { model.toggleFavorite(item) }
                         )
                             .contextMenu {

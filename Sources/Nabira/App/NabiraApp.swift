@@ -33,6 +33,7 @@ private struct ClipboardMenuToggleView: View {
 
 private final class ClipboardHistoryWindow: NSPanel {
     var dismiss: (() -> Void)?
+    var willDismiss: (() -> Void)?
     private var isDismissing = false
     private var restingFrame: NSRect?
 
@@ -56,6 +57,7 @@ private final class ClipboardHistoryWindow: NSPanel {
     func dismissAnimated() {
         guard isVisible, !isDismissing else { return }
         isDismissing = true
+        willDismiss?()
         let finalFrame = restingFrame ?? frame
 
         NSAnimationContext.runAnimationGroup { context in
@@ -141,8 +143,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var statusItem: NSStatusItem?
     private var clipboardHistoryMenuItem: NSMenuItem?
     private var libraryWindow: ClipboardHistoryWindow?
+    private var previewWindow: NSWindow?
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
+    private var isClosingPreview = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(AppSettings.shared.showInDock ? .regular : .accessory)
@@ -275,6 +279,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.animationBehavior = .none
             window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
             window.dismiss = { [weak window] in window?.dismissAnimated() }
+            window.willDismiss = { [weak self] in self?.hidePreviewForLibraryDismissal() }
             window.contentView = NSHostingView(rootView: LibraryView(
                 model: services.libraryModel,
                 settings: services.settings,
@@ -282,6 +287,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     window?.dismissAnimated()
                     self?.openClipboardSettings()
                 },
+                preview: { [weak self] item in self?.openPreview(item) },
                 close: { [weak window] in window?.dismissAnimated() }
             ))
             libraryWindow = window
@@ -291,6 +297,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         positionLibraryWindow()
         libraryWindow?.presentAnimated()
         DispatchQueue.main.async { [weak libraryWindow] in libraryWindow?.makeFirstResponder(nil) }
+    }
+
+    private func openPreview(_ item: ClipboardItem) {
+        let rootView = ClipboardPreviewView(item: item)
+        if previewWindow == nil {
+            let window = makeWindow(
+                title: "Preview",
+                size: NSSize(width: 780, height: 520),
+                rootView: rootView
+            )
+            window.contentMinSize = NSSize(width: 520, height: 320)
+            window.delegate = self
+            previewWindow = window
+        } else {
+            previewWindow?.contentView = NSHostingView(rootView: rootView)
+        }
+        positionPreviewWindow()
+        if let libraryWindow, let previewWindow,
+           libraryWindow.childWindows?.contains(previewWindow) != true {
+            libraryWindow.addChildWindow(previewWindow, ordered: .above)
+        }
+        show(previewWindow)
+    }
+
+    private func positionPreviewWindow() {
+        guard let window = previewWindow,
+              let screen = NSScreen.main ?? window.screen ?? NSScreen.screens.first else { return }
+        let visibleFrame = screen.visibleFrame
+        let windowSize = window.frame.size
+        window.setFrameOrigin(NSPoint(
+            x: visibleFrame.midX - windowSize.width / 2,
+            y: visibleFrame.midY - windowSize.height / 2
+        ))
+    }
+
+    private func hidePreviewForLibraryDismissal() {
+        guard let previewWindow else { return }
+        libraryWindow?.removeChildWindow(previewWindow)
+        previewWindow.orderOut(nil)
     }
 
     private func positionLibraryWindow() {
@@ -306,9 +351,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowDidResignKey(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow, window === libraryWindow else { return }
-        guard services?.libraryModel.favoritesLimitMessage == nil else { return }
-        libraryWindow?.dismissAnimated()
+        guard let window = notification.object as? NSWindow,
+              window === libraryWindow || window === previewWindow else { return }
+        if window === previewWindow, isClosingPreview { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            let keyWindow = NSApp.keyWindow
+            guard keyWindow !== self.libraryWindow, keyWindow !== self.previewWindow else { return }
+            guard self.services?.libraryModel.favoritesLimitMessage == nil else { return }
+            self.libraryWindow?.dismissAnimated()
+        }
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        if sender === previewWindow {
+            isClosingPreview = true
+        } else if sender === libraryWindow {
+            hidePreviewForLibraryDismissal()
+        }
+        return true
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === previewWindow else { return }
+        libraryWindow?.removeChildWindow(window)
+        if libraryWindow?.isVisible == true {
+            libraryWindow?.makeKey()
+        }
+        DispatchQueue.main.async { [weak self] in
+            self?.isClosingPreview = false
+        }
     }
     @objc private func openSettings() {
         guard let services else { return }
