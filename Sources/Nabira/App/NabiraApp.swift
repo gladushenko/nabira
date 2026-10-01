@@ -2,6 +2,35 @@ import AppKit
 import Carbon
 import SwiftUI
 
+private struct ClipboardMenuToggleView: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        Button {
+            settings.isClipboardEnabled.toggle()
+        } label: {
+            HStack(spacing: 8) {
+                Text("Enable Clipboard")
+                    .foregroundStyle(.primary)
+                Spacer()
+                ZStack(alignment: settings.isClipboardEnabled ? .trailing : .leading) {
+                    Capsule()
+                        .fill(settings.isClipboardEnabled ? Color(nsColor: .controlAccentColor) : Color.secondary.opacity(0.3))
+                    Circle()
+                        .fill(.white)
+                        .padding(2)
+                        .shadow(color: .black.opacity(0.18), radius: 1, y: 0.5)
+                }
+                .frame(width: 32, height: 18)
+                .animation(.easeOut(duration: 0.12), value: settings.isClipboardEnabled)
+            }
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 15)
+        .frame(height: 28)
+    }
+}
+
 private final class ClipboardHistoryWindow: NSPanel {
     var dismiss: (() -> Void)?
     private var isDismissing = false
@@ -120,7 +149,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         do {
             let services = try AppServices()
             self.services = services
-            services.monitor.start()
+            if services.settings.isClipboardEnabled {
+                services.monitor.start()
+            }
+            services.settings.onClipboardEnabledChange = { [weak self] isEnabled in
+                guard let self, let services = self.services else { return }
+                if isEnabled {
+                    services.monitor.start()
+                } else {
+                    services.monitor.stop()
+                }
+            }
             services.settings.onClipboardHistoryShortcutChange = { [weak self] shortcut in
                 self?.registerClipboardHistoryShortcut(shortcut)
                 self?.updateClipboardHistoryMenuShortcut(shortcut)
@@ -155,14 +194,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem?.button?.image = NSImage(systemSymbolName: "clipboard", accessibilityDescription: "Nabira")
         let menu = NSMenu()
-        let clipboardHistoryItem = item("Nabira Clipboard", action: #selector(openLibrary))
+        let clipboardHistoryItem = item("Show Clipboard", action: #selector(openLibrary))
         clipboardHistoryMenuItem = clipboardHistoryItem
         updateClipboardHistoryMenuShortcut(services?.settings.clipboardHistoryShortcut)
-        menu.addItem(clipboardHistoryItem)
-        menu.addItem(item("Clear All Clipboard History…", action: #selector(confirmClearHistory)))
+        menu.addItem(item("Nabira Settings…", action: #selector(openSettings), key: ","))
         menu.addItem(.separator())
-        menu.addItem(item("Settings…", action: #selector(openSettings), key: ","))
+        menu.addItem(clipboardHistoryItem)
+        menu.addItem(item("Clear Clipboard History", action: #selector(confirmClearHistory)))
+        menu.addItem(.separator())
         menu.addItem(item("Quit Nabira", action: #selector(quitNabira), key: "q"))
+        menu.update()
+        if let settings = services?.settings {
+            menu.insertItem(makeClipboardEnabledMenuItem(width: menu.size.width, settings: settings), at: 2)
+        }
         statusItem?.menu = menu
     }
 
@@ -180,6 +224,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if shortcut.modifiers & UInt32(shiftKey) != 0 { modifiers.insert(.shift) }
         if shortcut.modifiers & UInt32(cmdKey) != 0 { modifiers.insert(.command) }
         item.keyEquivalentModifierMask = modifiers
+    }
+
+    private func makeClipboardEnabledMenuItem(width: CGFloat, settings: AppSettings) -> NSMenuItem {
+        let menuItem = NSMenuItem()
+        let view = NSHostingView(rootView: ClipboardMenuToggleView(settings: settings))
+        view.frame = NSRect(x: 0, y: 0, width: width, height: 28)
+        menuItem.view = view
+        return menuItem
     }
 
     private func menuKeyEquivalent(for shortcut: GlobalShortcut) -> String {
@@ -223,7 +275,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.animationBehavior = .none
             window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
             window.dismiss = { [weak window] in window?.dismissAnimated() }
-            window.contentView = NSHostingView(rootView: LibraryView(model: services.libraryModel) { [weak window] in window?.dismissAnimated() })
+            window.contentView = NSHostingView(rootView: LibraryView(model: services.libraryModel, settings: services.settings) { [weak window] in window?.dismissAnimated() })
             libraryWindow = window
             libraryWindow?.delegate = self
             libraryWindow?.contentMinSize = NSSize(width: 600, height: 360)
@@ -255,7 +307,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if settingsWindow == nil {
             settingsWindow = makeWindow(title: "Nabira Settings", size: NSSize(width: 760, height: 520), rootView: SettingsView(settings: services.settings, model: services.libraryModel))
         }
+        positionSettingsWindow()
         show(settingsWindow)
+    }
+
+    private func positionSettingsWindow() {
+        guard let window = settingsWindow,
+              let screen = NSScreen.main ?? window.screen ?? NSScreen.screens.first else { return }
+        let visibleFrame = screen.visibleFrame
+        let windowSize = window.frame.size
+        window.setFrameOrigin(NSPoint(
+            x: visibleFrame.midX - windowSize.width / 2,
+            y: visibleFrame.midY - windowSize.height / 2
+        ))
     }
     @objc private func quitNabira() { NSApp.terminate(nil) }
     @objc private func confirmClearHistory() {

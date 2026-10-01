@@ -53,13 +53,6 @@ enum HistoryFilter: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 }
 
-enum OTPBehavior: String, CaseIterable, Identifiable, Sendable {
-    case ignore = "Never save"
-    case expire = "Delete after 60 seconds"
-    case keep = "Keep"
-    var id: String { rawValue }
-}
-
 enum AppAppearance: String, CaseIterable, Identifiable, Sendable {
     case system = "System", light = "Light", dark = "Dark"
     var id: String { rawValue }

@@ -58,6 +58,8 @@ struct SourceIcon: View {
 
 struct ClipboardRow: View {
     let item: ClipboardItem
+    let showPreview: Bool
+    let showMetadata: Bool
     let select: () -> Void
     let togglePin: () -> Void
     @StateObject private var state = ClipboardRowState()
@@ -65,14 +67,18 @@ struct ClipboardRow: View {
     var body: some View {
         HStack(spacing: 14) {
             HStack(spacing: 14) {
-                SourceIcon(item: item)
+                if showPreview {
+                    SourceIcon(item: item)
+                }
                 VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 6) {
-                        Text(item.contentType.label)
-                        Text("•")
-                        Text(relativeAge)
+                    if showMetadata {
+                        HStack(spacing: 6) {
+                            Text(item.contentType.label)
+                            Text("•")
+                            Text(relativeAge)
+                        }
+                        .font(.callout).foregroundStyle(.secondary)
                     }
-                    .font(.callout).foregroundStyle(.secondary)
                     Text(displayedContent)
                         .font(.title2)
                         .lineLimit(2)

@@ -23,8 +23,8 @@ struct OnboardingView: View {
             HStack {
                 if state.step > 0 { Button("Back") { state.step -= 1 } }
                 Spacer()
-                Button(state.step == 5 ? "Start Using Nabira" : "Continue") {
-                    if state.step == 5 { finish() } else { state.step += 1 }
+                Button(state.step == 4 ? "Start Using Nabira" : "Continue") {
+                    if state.step == 4 { finish() } else { state.step += 1 }
                 }.keyboardShortcut(.defaultAction)
             }
         }
@@ -42,20 +42,17 @@ struct OnboardingView: View {
         case 3:
             Toggle("Enable Direct Paste", isOn: $state.directPaste)
                 .onChange(of: state.directPaste) { _, enabled in if enabled { pasteCoordinator.requestAccessibility() } }
-        case 5:
-            Text("Password managers are excluded automatically. Add other apps in Settings → Privacy.").font(.callout).foregroundStyle(.secondary)
         default: EmptyView()
         }
     }
 
-    private var title: String { ["Your clipboard, ready", "Start automatically", "One shortcut", "Direct Paste", "Private by design", "Review exclusions"][state.step] }
+    private var title: String { ["Your clipboard, ready", "Start automatically", "One shortcut", "Direct Paste", "Private by design"][state.step] }
     private var message: String {
         ["Nabira keeps a searchable local history and lets you paste without leaving your keyboard.",
          "Keep Nabira available in the menu bar after every login.",
          "Press Command–B anywhere to open Clipboard History.",
          "Accessibility is requested only if you enable automatic pasting. Manual paste always works.",
-         "Clipboard contents stay on this Mac. Nabira has no account, cloud API, or content analytics.",
-         "Sensitive apps and concealed pasteboard content are never recorded."][state.step]
+         "Clipboard contents stay on this Mac. Nabira has no account, cloud API, or content analytics."][state.step]
     }
-    private var symbol: String { ["clipboard", "power", "keyboard", "hand.tap", "lock.shield", "checklist.checked"][state.step] }
+    private var symbol: String { ["clipboard", "power", "keyboard", "hand.tap", "lock.shield"][state.step] }
 }

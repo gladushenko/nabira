@@ -22,6 +22,7 @@ final class ClipboardMonitor: ClipboardCapturing {
 
     func start() {
         guard timer == nil else { return }
+        lastChangeCount = pasteboard.changeCount
         timer = Timer.scheduledTimer(withTimeInterval: 0.45, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.poll() }
         }

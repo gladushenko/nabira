@@ -125,18 +125,16 @@ private func repository() throws -> SQLiteClipboardRepository {
         #expect(try repo.search("missing", filter: .all, limit: 10).isEmpty)
     }
 
-    @Test func privacyFiltersAndOTP() {
+    @Test func captureGuardFiltersLargeItems() {
         let guardService = PrivacyGuard()
-        let settings = SettingsSnapshot(maxItems: 5_000, retentionDays: 30, maxItemBytes: 10_000, maxImageBytes: 100_000,
-                                        excludedBundleIDs: ["blocked.app"], ignoredPasteboardTypes: ["org.nspasteboard.ConcealedType"], otpBehavior: .ignore)
+        let settings = SettingsSnapshot(maxItems: 5_000, retentionDays: 30, maxItemBytes: 10_000, maxImageBytes: 100_000)
         let rep = PasteboardRepresentation(type: "public.utf8-plain-text", data: Data("hello".utf8))
-        #expect(guardService.decision(for: .init(representations: [rep], sourceBundleID: "blocked.app", searchableText: "hello", contentType: .text, byteCount: 5), settings: settings) == .ignore("Excluded application"))
+        #expect(guardService.decision(for: .init(representations: [rep], sourceBundleID: "blocked.app", searchableText: "hello", contentType: .text, byteCount: 5), settings: settings) == .allow)
         let secret = PasteboardRepresentation(type: "org.nspasteboard.ConcealedType", data: Data())
-        #expect(guardService.decision(for: .init(representations: [secret], sourceBundleID: nil, searchableText: "secret", contentType: .text, byteCount: 0), settings: settings) == .ignore("Private pasteboard type"))
+        #expect(guardService.decision(for: .init(representations: [secret], sourceBundleID: nil, searchableText: "secret", contentType: .text, byteCount: 0), settings: settings) == .allow)
         #expect(guardService.decision(for: .init(representations: [rep], sourceBundleID: nil, searchableText: "large text", contentType: .text, byteCount: 50_000), settings: settings) == .ignore("Item is too large"))
         #expect(guardService.decision(for: .init(representations: [rep], sourceBundleID: nil, searchableText: "image", contentType: .image, byteCount: 50_000), settings: settings) == .allow)
-        #expect(PrivacyGuard.looksLikeOTP("123456"))
-        #expect(!PrivacyGuard.looksLikeOTP("invoice 123456"))
+        #expect(guardService.decision(for: .init(representations: [rep], sourceBundleID: nil, searchableText: "123456", contentType: .text, byteCount: 6), settings: settings) == .allow)
     }
 
     @Test func textTransformations() throws {

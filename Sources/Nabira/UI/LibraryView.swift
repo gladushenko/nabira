@@ -3,6 +3,7 @@ import SwiftUI
 
 struct LibraryView: View {
     @ObservedObject var model: HistoryViewModel
+    @ObservedObject var settings: AppSettings
     let close: () -> Void
     private let controlHeight: CGFloat = 28
     private let controlCornerRadius: CGFloat = 10
@@ -12,6 +13,17 @@ struct LibraryView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                HStack {
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                    TextField("Search", text: $model.query).textFieldStyle(.plain)
+                }
+                .padding(.horizontal, 8)
+                .frame(height: controlHeight)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: controlCornerRadius))
+                .padding(.horizontal, controlHorizontalPadding)
+                .padding(.top, controlVerticalSpacing + 3)
+                .padding(.bottom, controlVerticalSpacing + 3)
+
                 HStack(spacing: 2) {
                     ForEach(HistoryFilter.allCases) { filter in
                         Button {
@@ -37,17 +49,6 @@ struct LibraryView: View {
                 .frame(height: controlHeight)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: controlCornerRadius))
                 .padding(.horizontal, controlHorizontalPadding)
-                .padding(.top, controlVerticalSpacing + 3)
-                .padding(.bottom, controlVerticalSpacing + 3)
-
-                HStack {
-                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                    TextField("Search", text: $model.query).textFieldStyle(.plain)
-                }
-                .padding(.horizontal, 8)
-                .frame(height: controlHeight)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: controlCornerRadius))
-                .padding(.horizontal, controlHorizontalPadding)
                 .padding(.bottom, controlVerticalSpacing + 3)
 
                 if model.items.isEmpty {
@@ -58,6 +59,8 @@ struct LibraryView: View {
                     List(model.items) { item in
                         ClipboardRow(
                             item: item,
+                            showPreview: settings.showClipboardPreviews,
+                            showMetadata: settings.showClipboardMetadata,
                             select: { pasteAndClose(item) },
                             togglePin: { model.togglePin(item) }
                         )

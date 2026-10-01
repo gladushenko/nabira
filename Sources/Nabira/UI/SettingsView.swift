@@ -23,7 +23,6 @@ private enum SettingsModule: String, CaseIterable, Identifiable {
 
 @MainActor private final class SettingsLocalState: ObservableObject {
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
-    @Published var excludedID = ""
     @Published var selection: SettingsModule? = .general
     @Published var isRecordingShortcut = false
     @Published var recordedShortcutDisplay: String?
@@ -193,6 +192,12 @@ struct SettingsView: View {
         case .clipboard:
             Form {
                 Section("History") {
+                    Toggle("Enable Clipboard", isOn: $settings.isClipboardEnabled)
+                        .controlSize(.large)
+                    Toggle("Show App Icons", isOn: $settings.showClipboardPreviews)
+                        .controlSize(.large)
+                    Toggle("Show Content Description", isOn: $settings.showClipboardMetadata)
+                        .controlSize(.large)
                     LabeledContent("Maximum items", value: "\(AppSettings.maxItems)")
                     LabeledContent("Maximum pinned items", value: "\(AppSettings.maxPinnedItems)")
                     Picker("Retention", selection: $settings.retentionDays) {
@@ -200,12 +205,6 @@ struct SettingsView: View {
                         Text("2 weeks").tag(14)
                         Text("1 month").tag(30)
                     }
-                }
-
-                Section("Privacy") {
-                    Picker("One-time codes", selection: $settings.otpBehavior) { ForEach(OTPBehavior.allCases) { Text($0.rawValue).tag($0) } }
-                    ForEach(Array(settings.excludedBundleIDs).sorted(), id: \.self) { id in HStack { Text(id); Spacer(); Button("Remove") { settings.excludedBundleIDs.remove(id) } } }
-                    HStack { TextField("Bundle identifier", text: $state.excludedID); Button("Add") { if !state.excludedID.isEmpty { settings.excludedBundleIDs.insert(state.excludedID); state.excludedID = "" } } }
                 }
 
                 Section("Shortcuts") {
