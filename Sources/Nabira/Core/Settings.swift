@@ -31,11 +31,14 @@ final class AppSettings: ObservableObject {
     static let shared = AppSettings()
     static let maxItems = 300
     nonisolated static let maxPinnedItems = 10
-    static let defaultRetentionDays = 7
+    static let defaultRetentionDays = 30
+    static let defaultClipboardEnabled = true
+    static let defaultShowClipboardPreviews = true
+    static let defaultShowClipboardMetadata = true
     static let maxHistoryBytes = 2 * 1_024 * 1_024 * 1_024
     static let maxItemBytes = 20 * 1_024 * 1_024
     static let maxImageBytes = 100 * 1_024 * 1_024
-    static let retentionOptions = [7, 14, 30]
+    static let retentionOptions = [1, 7, 14, 30, 60]
 
     private let defaults = UserDefaults.standard
     var onClipboardHistoryShortcutChange: ((GlobalShortcut) -> Void)?
@@ -65,9 +68,9 @@ final class AppSettings: ObservableObject {
     private init() {
         defaults.register(defaults: [
             "retentionDays": Self.defaultRetentionDays,
-            "isClipboardEnabled": true,
-            "showClipboardPreviews": true,
-            "showClipboardMetadata": true,
+            "isClipboardEnabled": Self.defaultClipboardEnabled,
+            "showClipboardPreviews": Self.defaultShowClipboardPreviews,
+            "showClipboardMetadata": Self.defaultShowClipboardMetadata,
             "clipboardShortcutKeyCode": Int(GlobalShortcut.clipboardHistoryDefault.keyCode),
             "clipboardShortcutModifiers": Int(GlobalShortcut.clipboardHistoryDefault.modifiers),
             "clipboardShortcutKeyLabel": GlobalShortcut.clipboardHistoryDefault.keyLabel,
@@ -94,6 +97,18 @@ final class AppSettings: ObservableObject {
 
     func setClipboardHistoryShortcutRecording(_ isRecording: Bool) {
         onClipboardHistoryShortcutRecordingChange?(isRecording)
+    }
+
+    func restoreClipboardDefaults() {
+        isClipboardEnabled = Self.defaultClipboardEnabled
+        showClipboardPreviews = Self.defaultShowClipboardPreviews
+        showClipboardMetadata = Self.defaultShowClipboardMetadata
+        retentionDays = Self.defaultRetentionDays
+        clipboardHistoryShortcut = .clipboardHistoryDefault
+    }
+
+    func restoreShortcutDefaults() {
+        clipboardHistoryShortcut = .clipboardHistoryDefault
     }
 
     private func applyDockPolicy() {

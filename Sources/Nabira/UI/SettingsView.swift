@@ -24,6 +24,8 @@ private enum SettingsModule: String, CaseIterable, Identifiable {
 @MainActor private final class SettingsLocalState: ObservableObject {
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
     @Published var selection: SettingsModule? = .general
+    @Published var isClearHistoryConfirmationPresented = false
+    @Published var restoreDefaultsTarget: SettingsModule?
     @Published var isRecordingShortcut = false
     @Published var recordedShortcutDisplay: String?
     @Published var shortcutValidationMessage: String?
@@ -145,7 +147,12 @@ struct SettingsView: View {
     var body: some View {
         NavigationSplitView {
             List(SettingsModule.allCases, selection: selectionBinding) { module in
-                Label(module.rawValue, systemImage: module.icon)
+                HStack(spacing: 8) {
+                    Image(systemName: module.icon)
+                        .font(.system(size: 13))
+                        .frame(width: 16)
+                    Text(module.rawValue)
+                }
                     .tag(module)
             }
             .navigationTitle("Settings")
@@ -158,6 +165,18 @@ struct SettingsView: View {
         .frame(minWidth: 760, minHeight: 520)
         .toolbar(.hidden, for: .windowToolbar)
         .onDisappear { state.stopRecordingShortcut() }
+        .alert("Clear all clipboard history?", isPresented: $state.isClearHistoryConfirmationPresented) {
+            Button("Cancel", role: .cancel) {}
+            Button("Clear All", role: .destructive) { model.clearAll() }
+        } message: {
+            Text("All items, including pinned items, will be permanently deleted.")
+        }
+        .alert("Restore Defaults?", isPresented: restoreDefaultsConfirmationBinding) {
+            Button("Cancel", role: .cancel) {}
+            Button("OK") { restoreDefaults() }
+        } message: {
+            Text(restoreDefaultsMessage)
+        }
     }
 
     private var selectedModule: SettingsModule {
@@ -175,6 +194,24 @@ struct SettingsView: View {
         )
     }
 
+    private var restoreDefaultsConfirmationBinding: Binding<Bool> {
+        Binding(
+            get: { state.restoreDefaultsTarget != nil },
+            set: { if !$0 { state.restoreDefaultsTarget = nil } }
+        )
+    }
+
+    private var restoreDefaultsMessage: String {
+        switch state.restoreDefaultsTarget {
+        case .clipboard:
+            "This will restore all Clipboard settings to their default values. Your clipboard history will not be deleted."
+        case .shortcuts:
+            "This will restore all keyboard shortcuts to their default values."
+        default:
+            "This will restore the default settings."
+        }
+    }
+
     @ViewBuilder
     private var settingsDetail: some View {
         switch selectedModule {
@@ -190,36 +227,51 @@ struct SettingsView: View {
             .formStyle(.grouped)
 
         case .clipboard:
-            Form {
-                Section("History") {
-                    Toggle("Enable Clipboard", isOn: $settings.isClipboardEnabled)
-                        .controlSize(.large)
-                    Toggle("Show App Icons", isOn: $settings.showClipboardPreviews)
-                        .controlSize(.large)
-                    Toggle("Show Content Description", isOn: $settings.showClipboardMetadata)
-                        .controlSize(.large)
-                    LabeledContent("Maximum items", value: "\(AppSettings.maxItems)")
-                    LabeledContent("Maximum pinned items", value: "\(AppSettings.maxPinnedItems)")
-                    Picker("Retention", selection: $settings.retentionDays) {
-                        Text("1 week").tag(7)
-                        Text("2 weeks").tag(14)
-                        Text("1 month").tag(30)
+            VStack(spacing: 0) {
+                Form {
+                    Section("History") {
+                        Toggle("Enable Clipboard", isOn: $settings.isClipboardEnabled)
+                            .controlSize(.large)
+                        Toggle("Show App Icons", isOn: $settings.showClipboardPreviews)
+                            .controlSize(.large)
+                        Toggle("Show Content Description", isOn: $settings.showClipboardMetadata)
+                            .controlSize(.large)
+                        LabeledContent("Maximum items", value: "\(AppSettings.maxItems)")
+                        LabeledContent("Maximum pinned items", value: "\(AppSettings.maxPinnedItems)")
+                        Picker("Retention", selection: $settings.retentionDays) {
+                            Text("1 day").tag(1)
+                            Text("1 week").tag(7)
+                            Text("2 weeks").tag(14)
+                            Text("1 month").tag(30)
+                            Text("2 months").tag(60)
+                        }
+                        Button("Clear Clipboard History…", role: .destructive) {
+                            state.isClearHistoryConfirmationPresented = true
+                        }
+                    }
+
+                    Section("Shortcuts") {
+                        clipboardHistoryShortcutSetting
                     }
                 }
+                .formStyle(.grouped)
+                .frame(maxHeight: .infinity)
 
-                Section("Shortcuts") {
-                    clipboardHistoryShortcutSetting
-                }
+                restoreDefaultsButton(target: .clipboard)
             }
-            .formStyle(.grouped)
 
         case .shortcuts:
-            Form {
-                Section("Clipboard") {
-                    clipboardHistoryShortcutSetting
+            VStack(spacing: 0) {
+                Form {
+                    Section("Clipboard") {
+                        clipboardHistoryShortcutSetting
+                    }
                 }
+                .formStyle(.grouped)
+                .frame(maxHeight: .infinity)
+
+                restoreDefaultsButton(target: .shortcuts)
             }
-            .formStyle(.grouped)
 
         case .permissions:
             Form {
@@ -236,7 +288,7 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var clipboardHistoryShortcutSetting: some View {
-        LabeledContent("Clipboard History") {
+        LabeledContent("Open Clipboard") {
             HStack(spacing: 12) {
                 Button(
                     state.isRecordingShortcut
@@ -263,6 +315,33 @@ struct SettingsView: View {
             Text(message)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    private func restoreDefaultsButton(target: SettingsModule) -> some View {
+        HStack {
+            Spacer()
+            Button("Restore Defaults") {
+                state.restoreDefaultsTarget = target
+            }
+                .buttonStyle(.bordered)
+                .tint(.secondary)
+            Spacer()
+        }
+        .padding(.vertical, 16)
+    }
+
+    private func restoreDefaults() {
+        let target = state.restoreDefaultsTarget
+        state.restoreDefaultsTarget = nil
+        state.stopRecordingShortcut()
+        switch target {
+        case .clipboard:
+            settings.restoreClipboardDefaults()
+        case .shortcuts:
+            settings.restoreShortcutDefaults()
+        default:
+            break
         }
     }
 

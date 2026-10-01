@@ -70,4 +70,13 @@ final class HistoryViewModel: ObservableObject {
         do { try repository.delete(id: item.id); reload() }
         catch { errorMessage = error.localizedDescription }
     }
+
+    func clearAll() {
+        do {
+            try repository.clear(since: nil, includePinned: true)
+            reload()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
 }

@@ -24,7 +24,11 @@ private func repository() throws -> SQLiteClipboardRepository {
     @MainActor @Test func historyLimitIsFixedAtThreeHundredItems() {
         #expect(AppSettings.maxItems == 300)
         #expect(AppSettings.maxPinnedItems == 10)
-        #expect(AppSettings.defaultRetentionDays == 7)
+        #expect(AppSettings.defaultRetentionDays == 30)
+        #expect(AppSettings.retentionOptions == [1, 7, 14, 30, 60])
+        #expect(AppSettings.defaultClipboardEnabled)
+        #expect(AppSettings.defaultShowClipboardPreviews)
+        #expect(AppSettings.defaultShowClipboardMetadata)
         #expect(AppSettings.maxHistoryBytes == 2 * 1_024 * 1_024 * 1_024)
         #expect(AppSettings.maxImageBytes == 100 * 1_024 * 1_024)
         #expect(AppSettings.shared.snapshot.maxItems == 300)

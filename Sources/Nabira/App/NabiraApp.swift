@@ -200,7 +200,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         menu.addItem(item("Nabira Settings…", action: #selector(openSettings), key: ","))
         menu.addItem(.separator())
         menu.addItem(clipboardHistoryItem)
-        menu.addItem(item("Clear Clipboard History", action: #selector(confirmClearHistory)))
+        menu.addItem(item("Clear Clipboard History…", action: #selector(confirmClearHistory)))
         menu.addItem(.separator())
         menu.addItem(item("Quit Nabira", action: #selector(quitNabira), key: "q"))
         menu.update()
@@ -331,12 +331,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         alert.addButton(withTitle: "Clear All")
         alert.addButton(withTitle: "Cancel")
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        do {
-            try services.repository.clear(since: nil, includePinned: true)
-            services.libraryModel.reload()
-        } catch {
-            NSAlert(error: error).runModal()
-        }
+        services.libraryModel.clearAll()
     }
 
     private func makeWindow<Content: View>(title: String, size: NSSize, rootView: Content) -> NSWindow {
