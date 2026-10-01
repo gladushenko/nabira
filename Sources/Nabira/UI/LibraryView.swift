@@ -77,7 +77,7 @@ struct LibraryView: View {
                             showMetadata: settings.showClipboardMetadata,
                             pasteOnSingleClick: settings.pasteOnSingleClick,
                             select: { pasteAndClose(item) },
-                            togglePin: { model.togglePin(item) }
+                            toggleFavorite: { model.toggleFavorite(item) }
                         )
                             .contextMenu {
                                 Button("Paste") { pasteAndClose(item) }
@@ -95,7 +95,9 @@ struct LibraryView: View {
                                     }
                                 }
                                 if item.contentType.canBePinned {
-                                    Button(item.isPinned ? "Unpin" : "Pin") { model.togglePin(item) }
+                                    Button(item.isPinned ? "Remove from Favorites" : "Add to Favorites") {
+                                        model.toggleFavorite(item)
+                                    }
                                 }
                                 Divider()
                                 Button("Delete", role: .destructive) { model.delete(item) }
@@ -107,13 +109,13 @@ struct LibraryView: View {
             .navigationTitle("Nabira Clipboard")
         }
         .onAppear { model.limit = 5_000; model.reload() }
-        .alert("Pin limit reached", isPresented: Binding(
-            get: { model.pinLimitMessage != nil },
-            set: { if !$0 { model.pinLimitMessage = nil } }
+        .alert("Favorites limit reached", isPresented: Binding(
+            get: { model.favoritesLimitMessage != nil },
+            set: { if !$0 { model.favoritesLimitMessage = nil } }
         )) {
-            Button("OK") { model.pinLimitMessage = nil }
+            Button("OK") { model.favoritesLimitMessage = nil }
         } message: {
-            Text(model.pinLimitMessage ?? "")
+            Text(model.favoritesLimitMessage ?? "")
         }
     }
 
@@ -132,6 +134,6 @@ struct LibraryView: View {
     }
 
     private func icon(for filter: HistoryFilter) -> String {
-        switch filter { case .all: "clock"; case .pinned: "pin"; case .text: "doc.text"; case .links: "link"; case .images: "photo"; case .files: "folder" }
+        switch filter { case .all: "clock"; case .favorites: "star"; case .text: "doc.text"; case .links: "link"; case .images: "photo"; case .files: "folder" }
     }
 }

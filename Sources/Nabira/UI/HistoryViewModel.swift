@@ -9,7 +9,7 @@ final class HistoryViewModel: ObservableObject {
     @Published var selection: UUID?
     @Published var notice: String?
     @Published var errorMessage: String?
-    @Published var pinLimitMessage: String?
+    @Published var favoritesLimitMessage: String?
 
     let repository: ClipboardRepository
     let pasteCoordinator: PasteCoordinator
@@ -56,11 +56,11 @@ final class HistoryViewModel: ObservableObject {
         } catch { errorMessage = error.localizedDescription; return .failed(error.localizedDescription) }
     }
 
-    func togglePin(_ item: ClipboardItem) {
+    func toggleFavorite(_ item: ClipboardItem) {
         guard item.contentType.canBePinned else { return }
         do { try repository.setPinned(!item.isPinned, id: item.id); reload() }
         catch NabiraError.pinLimitReached {
-            pinLimitMessage = "You can pin up to \(AppSettings.maxPinnedItems) items."
+            favoritesLimitMessage = "You can add up to \(AppSettings.maxPinnedItems) items to Favorites."
         } catch {
             errorMessage = error.localizedDescription
         }

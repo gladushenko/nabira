@@ -307,7 +307,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func windowDidResignKey(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window === libraryWindow else { return }
-        guard services?.libraryModel.pinLimitMessage == nil else { return }
+        guard services?.libraryModel.favoritesLimitMessage == nil else { return }
         libraryWindow?.dismissAnimated()
     }
     @objc private func openSettings() {
@@ -341,7 +341,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         guard let services else { return }
         let alert = NSAlert()
         alert.messageText = "Clear all clipboard history?"
-        alert.informativeText = "All items, including pinned items, will be permanently deleted."
+        alert.informativeText = "All items, including Favorites, will be permanently deleted."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Clear All")
         alert.addButton(withTitle: "Cancel")

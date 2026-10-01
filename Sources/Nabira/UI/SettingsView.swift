@@ -179,7 +179,7 @@ struct SettingsView: View {
             Button("Cancel", role: .cancel) {}
             Button("Clear All", role: .destructive) { model.clearAll() }
         } message: {
-            Text("All items, including pinned items, will be permanently deleted.")
+            Text("All items, including Favorites, will be permanently deleted.")
         }
         .alert("Restore Defaults?", isPresented: restoreDefaultsConfirmationBinding) {
             Button("Cancel", role: .cancel) {}
@@ -249,7 +249,7 @@ struct SettingsView: View {
                         Toggle("Paste on Single Click", isOn: $settings.pasteOnSingleClick)
                             .controlSize(.large)
                         LabeledContent("Maximum items", value: "\(AppSettings.maxItems)")
-                        LabeledContent("Maximum pinned items", value: "\(AppSettings.maxPinnedItems)")
+                        LabeledContent("Maximum favorites", value: "\(AppSettings.maxPinnedItems)")
                         Picker("Retention", selection: $settings.retentionDays) {
                             Text("1 day").tag(1)
                             Text("1 week").tag(7)

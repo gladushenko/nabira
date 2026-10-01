@@ -62,7 +62,7 @@ struct ClipboardRow: View {
     let showMetadata: Bool
     let pasteOnSingleClick: Bool
     let select: () -> Void
-    let togglePin: () -> Void
+    let toggleFavorite: () -> Void
     @StateObject private var state = ClipboardRowState()
 
     var body: some View {
@@ -90,14 +90,17 @@ struct ClipboardRow: View {
             .onTapGesture(count: pasteOnSingleClick ? 1 : 2, perform: select)
 
             if item.contentType.canBePinned {
-                Button(action: togglePin) {
-                    Label(item.isPinned ? "Unpin" : "Pin", systemImage: item.isPinned ? "pin.fill" : "pin")
+                Button(action: toggleFavorite) {
+                    Label(
+                        item.isPinned ? "Remove from Favorites" : "Add to Favorites",
+                        systemImage: item.isPinned ? "star.fill" : "star"
+                    )
                         .labelStyle(.iconOnly)
                         .font(.title3)
                 }
                 .buttonStyle(.borderless)
                 .padding(.trailing, 14)
-                .help(item.isPinned ? "Unpin" : "Pin")
+                .help(item.isPinned ? "Remove from Favorites" : "Add to Favorites")
             }
         }
         .padding(.vertical, 7)

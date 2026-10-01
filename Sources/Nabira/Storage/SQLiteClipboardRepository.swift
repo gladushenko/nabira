@@ -148,7 +148,7 @@ final class SQLiteClipboardRepository: ClipboardRepository, SearchProviding, @un
         let p = prefix
         switch filter {
         case .all: return ("", [])
-        case .pinned: return ("WHERE \(p)is_pinned=1", [])
+        case .favorites: return ("WHERE \(p)is_pinned=1", [])
         case .text: return ("WHERE \(p)content_type IN ('text','richText','html','color')", [])
         case .links: return ("WHERE \(p)content_type='url'", [])
         case .images: return ("WHERE \(p)content_type='image'", [])

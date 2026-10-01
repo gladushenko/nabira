@@ -49,7 +49,7 @@ struct ClipboardItem: Identifiable, Codable, Hashable, Sendable {
 }
 
 enum HistoryFilter: String, CaseIterable, Identifiable, Sendable {
-    case all = "All", text = "Text", links = "Links", images = "Images", files = "Files", pinned = "Pinned"
+    case all = "All", text = "Text", links = "Links", images = "Images", files = "Files", favorites = "Favorites"
     var id: String { rawValue }
 }
 
@@ -96,7 +96,7 @@ enum NabiraError: LocalizedError {
         case .database(let message): "Database error: \(message)"
         case .noPasteableContent: "This item has no pasteable content."
         case .invalidTransformation: "The text cannot be transformed."
-        case .pinLimitReached(let limit): "You can pin up to \(limit) items."
+        case .pinLimitReached(let limit): "You can add up to \(limit) items to Favorites."
         }
     }
 }
