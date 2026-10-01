@@ -275,7 +275,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.animationBehavior = .none
             window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
             window.dismiss = { [weak window] in window?.dismissAnimated() }
-            window.contentView = NSHostingView(rootView: LibraryView(model: services.libraryModel, settings: services.settings) { [weak window] in window?.dismissAnimated() })
+            window.contentView = NSHostingView(rootView: LibraryView(
+                model: services.libraryModel,
+                settings: services.settings,
+                openSettings: { [weak self, weak window] in
+                    window?.dismissAnimated()
+                    self?.openClipboardSettings()
+                },
+                close: { [weak window] in window?.dismissAnimated() }
+            ))
             libraryWindow = window
             libraryWindow?.delegate = self
             libraryWindow?.contentMinSize = NSSize(width: 600, height: 360)
@@ -309,6 +317,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         positionSettingsWindow()
         show(settingsWindow)
+    }
+
+    private func openClipboardSettings() {
+        openSettings()
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .showClipboardSettings, object: nil)
+        }
     }
 
     private func positionSettingsWindow() {

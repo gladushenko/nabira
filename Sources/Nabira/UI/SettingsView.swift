@@ -3,6 +3,10 @@ import Carbon
 import ServiceManagement
 import SwiftUI
 
+extension Notification.Name {
+    static let showClipboardSettings = Notification.Name("Nabira.showClipboardSettings")
+}
+
 private enum SettingsModule: String, CaseIterable, Identifiable {
     case general = "General"
     case clipboard = "Clipboard"
@@ -19,6 +23,7 @@ private enum SettingsModule: String, CaseIterable, Identifiable {
         case .permissions: "lock.shield"
         }
     }
+
 }
 
 @MainActor private final class SettingsLocalState: ObservableObject {
@@ -147,10 +152,10 @@ struct SettingsView: View {
     var body: some View {
         NavigationSplitView {
             List(SettingsModule.allCases, selection: selectionBinding) { module in
-                HStack(spacing: 8) {
+                HStack(spacing: 16) {
                     Image(systemName: module.icon)
-                        .font(.system(size: 13))
-                        .frame(width: 16)
+                        .font(.system(size: 15))
+                        .frame(width: 20)
                     Text(module.rawValue)
                 }
                     .tag(module)
@@ -165,6 +170,11 @@ struct SettingsView: View {
         .frame(minWidth: 760, minHeight: 520)
         .toolbar(.hidden, for: .windowToolbar)
         .onDisappear { state.stopRecordingShortcut() }
+        .onReceive(NotificationCenter.default.publisher(for: .showClipboardSettings)) { _ in
+            DispatchQueue.main.async {
+                state.selection = .clipboard
+            }
+        }
         .alert("Clear all clipboard history?", isPresented: $state.isClearHistoryConfirmationPresented) {
             Button("Cancel", role: .cancel) {}
             Button("Clear All", role: .destructive) { model.clearAll() }

@@ -4,25 +4,39 @@ import SwiftUI
 struct LibraryView: View {
     @ObservedObject var model: HistoryViewModel
     @ObservedObject var settings: AppSettings
+    let openSettings: () -> Void
     let close: () -> Void
     private let controlHeight: CGFloat = 28
     private let controlCornerRadius: CGFloat = 10
     private let controlHorizontalPadding: CGFloat = 18
-    private let controlVerticalSpacing: CGFloat = 8
+    private let controlVerticalSpacing: CGFloat = 18
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                HStack {
-                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                    TextField("Search", text: $model.query).textFieldStyle(.plain)
+                HStack(spacing: 12) {
+                    HStack {
+                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                        TextField("Search", text: $model.query).textFieldStyle(.plain)
+                    }
+                    .padding(.horizontal, 8)
+                    .frame(height: controlHeight)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: controlCornerRadius))
+
+                    Button(action: openSettings) {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 13, weight: .medium))
+                            .frame(width: controlHeight, height: controlHeight)
+                            .background(.quaternary, in: Circle())
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Settings")
+                    .accessibilityLabel("Settings")
                 }
-                .padding(.horizontal, 8)
-                .frame(height: controlHeight)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: controlCornerRadius))
                 .padding(.horizontal, controlHorizontalPadding)
-                .padding(.top, controlVerticalSpacing + 3)
-                .padding(.bottom, controlVerticalSpacing + 3)
+                .padding(.top, controlVerticalSpacing)
+                .padding(.bottom, controlVerticalSpacing)
 
                 HStack(spacing: 2) {
                     ForEach(HistoryFilter.allCases) { filter in
@@ -49,7 +63,7 @@ struct LibraryView: View {
                 .frame(height: controlHeight)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: controlCornerRadius))
                 .padding(.horizontal, controlHorizontalPadding)
-                .padding(.bottom, controlVerticalSpacing + 3)
+                .padding(.bottom, controlVerticalSpacing)
 
                 if model.items.isEmpty {
                     EmptyHistoryView()
