@@ -246,6 +246,8 @@ struct SettingsView: View {
                             .controlSize(.large)
                         Toggle("Show Content Description", isOn: $settings.showClipboardMetadata)
                             .controlSize(.large)
+                        Toggle("Paste on Single Click", isOn: $settings.pasteOnSingleClick)
+                            .controlSize(.large)
                         LabeledContent("Maximum items", value: "\(AppSettings.maxItems)")
                         LabeledContent("Maximum pinned items", value: "\(AppSettings.maxPinnedItems)")
                         Picker("Retention", selection: $settings.retentionDays) {

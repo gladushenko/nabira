@@ -75,6 +75,7 @@ struct LibraryView: View {
                             item: item,
                             showPreview: settings.showClipboardPreviews,
                             showMetadata: settings.showClipboardMetadata,
+                            pasteOnSingleClick: settings.pasteOnSingleClick,
                             select: { pasteAndClose(item) },
                             togglePin: { model.togglePin(item) }
                         )

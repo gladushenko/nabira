@@ -35,6 +35,7 @@ final class AppSettings: ObservableObject {
     static let defaultClipboardEnabled = true
     static let defaultShowClipboardPreviews = true
     static let defaultShowClipboardMetadata = true
+    static let defaultPasteOnSingleClick = true
     static let maxHistoryBytes = 2 * 1_024 * 1_024 * 1_024
     static let maxItemBytes = 20 * 1_024 * 1_024
     static let maxImageBytes = 100 * 1_024 * 1_024
@@ -54,6 +55,7 @@ final class AppSettings: ObservableObject {
     }
     @Published var showClipboardPreviews: Bool { didSet { defaults.set(showClipboardPreviews, forKey: "showClipboardPreviews") } }
     @Published var showClipboardMetadata: Bool { didSet { defaults.set(showClipboardMetadata, forKey: "showClipboardMetadata") } }
+    @Published var pasteOnSingleClick: Bool { didSet { defaults.set(pasteOnSingleClick, forKey: "pasteOnSingleClick") } }
     @Published var clipboardHistoryShortcut: GlobalShortcut {
         didSet {
             defaults.set(Int(clipboardHistoryShortcut.keyCode), forKey: "clipboardShortcutKeyCode")
@@ -71,6 +73,7 @@ final class AppSettings: ObservableObject {
             "isClipboardEnabled": Self.defaultClipboardEnabled,
             "showClipboardPreviews": Self.defaultShowClipboardPreviews,
             "showClipboardMetadata": Self.defaultShowClipboardMetadata,
+            "pasteOnSingleClick": Self.defaultPasteOnSingleClick,
             "clipboardShortcutKeyCode": Int(GlobalShortcut.clipboardHistoryDefault.keyCode),
             "clipboardShortcutModifiers": Int(GlobalShortcut.clipboardHistoryDefault.modifiers),
             "clipboardShortcutKeyLabel": GlobalShortcut.clipboardHistoryDefault.keyLabel,
@@ -81,6 +84,7 @@ final class AppSettings: ObservableObject {
         isClipboardEnabled = defaults.bool(forKey: "isClipboardEnabled")
         showClipboardPreviews = defaults.bool(forKey: "showClipboardPreviews")
         showClipboardMetadata = defaults.bool(forKey: "showClipboardMetadata")
+        pasteOnSingleClick = defaults.bool(forKey: "pasteOnSingleClick")
         clipboardHistoryShortcut = GlobalShortcut(
             keyCode: UInt32(defaults.integer(forKey: "clipboardShortcutKeyCode")),
             modifiers: UInt32(defaults.integer(forKey: "clipboardShortcutModifiers")),
@@ -103,6 +107,7 @@ final class AppSettings: ObservableObject {
         isClipboardEnabled = Self.defaultClipboardEnabled
         showClipboardPreviews = Self.defaultShowClipboardPreviews
         showClipboardMetadata = Self.defaultShowClipboardMetadata
+        pasteOnSingleClick = Self.defaultPasteOnSingleClick
         retentionDays = Self.defaultRetentionDays
         clipboardHistoryShortcut = .clipboardHistoryDefault
     }

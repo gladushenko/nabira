@@ -29,6 +29,7 @@ private func repository() throws -> SQLiteClipboardRepository {
         #expect(AppSettings.defaultClipboardEnabled)
         #expect(AppSettings.defaultShowClipboardPreviews)
         #expect(AppSettings.defaultShowClipboardMetadata)
+        #expect(AppSettings.defaultPasteOnSingleClick)
         #expect(AppSettings.maxHistoryBytes == 2 * 1_024 * 1_024 * 1_024)
         #expect(AppSettings.maxImageBytes == 100 * 1_024 * 1_024)
         #expect(AppSettings.shared.snapshot.maxItems == 300)

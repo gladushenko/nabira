@@ -60,6 +60,7 @@ struct ClipboardRow: View {
     let item: ClipboardItem
     let showPreview: Bool
     let showMetadata: Bool
+    let pasteOnSingleClick: Bool
     let select: () -> Void
     let togglePin: () -> Void
     @StateObject private var state = ClipboardRowState()
@@ -86,7 +87,7 @@ struct ClipboardRow: View {
                 Spacer(minLength: 4)
             }
             .contentShape(Rectangle())
-            .onTapGesture(perform: select)
+            .onTapGesture(count: pasteOnSingleClick ? 1 : 2, perform: select)
 
             if item.contentType.canBePinned {
                 Button(action: togglePin) {
