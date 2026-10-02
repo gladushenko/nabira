@@ -61,7 +61,8 @@ struct ClipboardRow: View {
     let showPreview: Bool
     let showMetadata: Bool
     let pasteOnSingleClick: Bool
-    let select: () -> Void
+    let paste: () -> Void
+    let pastePlainText: () -> Void
     let preview: () -> Void
     let toggleFavorite: () -> Void
     @StateObject private var state = ClipboardRowState()
@@ -88,9 +89,26 @@ struct ClipboardRow: View {
                 Spacer(minLength: 4)
             }
             .contentShape(Rectangle())
-            .onTapGesture(count: pasteOnSingleClick ? 1 : 2, perform: select)
+            .onTapGesture(count: pasteOnSingleClick ? 1 : 2, perform: paste)
 
             HStack(spacing: 8) {
+                Button(action: paste) {
+                    Label("Paste", systemImage: "doc.on.clipboard")
+                        .labelStyle(.iconOnly)
+                        .font(.title3)
+                }
+                .buttonStyle(.borderless)
+                .help("Paste")
+
+                Button(action: pastePlainText) {
+                    Label("Paste as Plain Text", systemImage: "textformat")
+                        .labelStyle(.iconOnly)
+                        .font(.title3)
+                }
+                .buttonStyle(.borderless)
+                .disabled(item.plainText == nil)
+                .help("Paste as Plain Text")
+
                 Button(action: preview) {
                     Label("Preview", systemImage: "eye")
                         .labelStyle(.iconOnly)

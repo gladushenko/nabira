@@ -77,7 +77,8 @@ struct LibraryView: View {
                             showPreview: settings.showClipboardPreviews,
                             showMetadata: settings.showClipboardMetadata,
                             pasteOnSingleClick: settings.pasteOnSingleClick,
-                            select: { pasteAndClose(item) },
+                            paste: { pasteAndClose(item) },
+                            pastePlainText: { pasteAndClose(item, plain: true) },
                             preview: { preview(item) },
                             toggleFavorite: { model.toggleFavorite(item) }
                         )
@@ -85,6 +86,14 @@ struct LibraryView: View {
                                 Button("Paste") { pasteAndClose(item) }
                                 if item.plainText != nil {
                                     Button("Paste as Plain Text") { pasteAndClose(item, plain: true) }
+                                }
+                                Button("Preview") { preview(item) }
+                                if item.contentType.canBePinned {
+                                    Button(item.isPinned ? "Remove from Favorites" : "Add to Favorites") {
+                                        model.toggleFavorite(item)
+                                    }
+                                }
+                                if item.plainText != nil {
                                     Menu("Transform and Paste") {
                                         ForEach(TextTransformation.allCases) { transformation in
                                             Button {
@@ -94,11 +103,6 @@ struct LibraryView: View {
                                                 Text(transformation.example)
                                             }
                                         }
-                                    }
-                                }
-                                if item.contentType.canBePinned {
-                                    Button(item.isPinned ? "Remove from Favorites" : "Add to Favorites") {
-                                        model.toggleFavorite(item)
                                     }
                                 }
                                 Divider()
