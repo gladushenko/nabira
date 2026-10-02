@@ -147,6 +147,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
     private var isClosingPreview = false
+    private var outsideClickMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(AppSettings.shared.showInDock ? .regular : .accessory)
@@ -186,7 +187,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    func applicationWillTerminate(_ notification: Notification) { services?.monitor.stop(); services?.shortcuts.unregisterAll() }
+    func applicationWillTerminate(_ notification: Notification) {
+        stopOutsideClickMonitor()
+        services?.monitor.stop()
+        services?.shortcuts.unregisterAll()
+    }
 
     private func registerClipboardHistoryShortcut(_ shortcut: GlobalShortcut) {
         services?.shortcuts.register(id: 1, keyCode: shortcut.keyCode, modifiers: shortcut.modifiers) { [weak self] in
@@ -279,7 +284,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.animationBehavior = .none
             window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
             window.dismiss = { [weak window] in window?.dismissAnimated() }
-            window.willDismiss = { [weak self] in self?.hidePreviewForLibraryDismissal() }
+            window.willDismiss = { [weak self] in
+                self?.stopOutsideClickMonitor()
+                self?.hidePreviewForLibraryDismissal()
+            }
             window.contentView = NSHostingView(rootView: LibraryView(
                 model: services.libraryModel,
                 settings: services.settings,
@@ -296,7 +304,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         positionLibraryWindow()
         libraryWindow?.presentAnimated()
+        startOutsideClickMonitor()
         DispatchQueue.main.async { [weak libraryWindow] in libraryWindow?.makeFirstResponder(nil) }
+    }
+
+    private func startOutsideClickMonitor() {
+        stopOutsideClickMonitor()
+        outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.libraryWindow?.dismissAnimated()
+            }
+        }
+    }
+
+    private func stopOutsideClickMonitor() {
+        guard let outsideClickMonitor else { return }
+        NSEvent.removeMonitor(outsideClickMonitor)
+        self.outsideClickMonitor = nil
     }
 
     private func openPreview(_ item: ClipboardItem) {
@@ -367,6 +393,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if sender === previewWindow {
             isClosingPreview = true
         } else if sender === libraryWindow {
+            stopOutsideClickMonitor()
             hidePreviewForLibraryDismissal()
         }
         return true

@@ -242,12 +242,29 @@ struct SettingsView: View {
                     Section("History") {
                         Toggle("Enable Clipboard", isOn: $settings.isClipboardEnabled)
                             .controlSize(.large)
-                        Toggle("Show App Icons", isOn: $settings.showClipboardPreviews)
-                            .controlSize(.large)
-                        Toggle("Show Content Description", isOn: $settings.showClipboardMetadata)
-                            .controlSize(.large)
                         Toggle("Paste on Single Click", isOn: $settings.pasteOnSingleClick)
                             .controlSize(.large)
+                        Toggle("Show App Icons", isOn: $settings.showClipboardPreviews)
+                            .controlSize(.large)
+                        LabeledContent("Content Description") {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Toggle("Show All", isOn: Binding(
+                                    get: { settings.showAllClipboardDescriptions },
+                                    set: { settings.setShowAllClipboardDescriptions($0) }
+                                ))
+                                .toggleStyle(.checkbox)
+
+                                ForEach(ClipboardDescriptionOption.allCases) { option in
+                                    Toggle(option.rawValue, isOn: Binding(
+                                        get: { settings.clipboardDescriptionOptions.contains(option) },
+                                        set: { settings.setClipboardDescriptionOption(option, enabled: $0) }
+                                    ))
+                                    .toggleStyle(.checkbox)
+                                    .disabled(settings.showAllClipboardDescriptions)
+                                }
+                            }
+                            .frame(minWidth: 150, alignment: .leading)
+                        }
                         LabeledContent("Maximum items", value: "\(AppSettings.maxItems)")
                         LabeledContent("Maximum favorites", value: "\(AppSettings.maxPinnedItems)")
                         Picker("Retention", selection: $settings.retentionDays) {

@@ -75,7 +75,7 @@ struct LibraryView: View {
                         ClipboardRow(
                             item: item,
                             showPreview: settings.showClipboardPreviews,
-                            showMetadata: settings.showClipboardMetadata,
+                            descriptionOptions: settings.clipboardDescriptionOptions,
                             pasteOnSingleClick: settings.pasteOnSingleClick,
                             paste: { pasteAndClose(item) },
                             preview: { preview(item) },

@@ -59,7 +59,7 @@ struct SourceIcon: View {
 struct ClipboardRow: View {
     let item: ClipboardItem
     let showPreview: Bool
-    let showMetadata: Bool
+    let descriptionOptions: Set<ClipboardDescriptionOption>
     let pasteOnSingleClick: Bool
     let paste: () -> Void
     let preview: () -> Void
@@ -80,11 +80,7 @@ struct ClipboardRow: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     HStack(spacing: 2) {
-                        if showMetadata {
-                            Text(item.contentType.label)
-                            Text("•")
-                            Text(relativeAge)
-                        }
+                        metadataContent
                         Spacer(minLength: 4)
                     }
                     .font(.callout)
@@ -140,6 +136,29 @@ struct ClipboardRow: View {
             }
         }
         .animation(.easeInOut(duration: 0.05), value: state.isHovering)
+    }
+
+    private var metadataContent: some View {
+        ForEach(Array(metadataDescriptions.enumerated()), id: \.offset) { index, description in
+            if index > 0 {
+                Text("•")
+            }
+            Text(description)
+        }
+    }
+
+    private var metadataDescriptions: [String] {
+        var descriptions: [String] = []
+        if descriptionOptions.contains(.contentType) {
+            descriptions.append(item.contentType.label)
+        }
+        if descriptionOptions.contains(.characterCount), let count = item.characterCount {
+            descriptions.append("\(count) \(count == 1 ? "char" : "chars")")
+        }
+        if descriptionOptions.contains(.time) {
+            descriptions.append(relativeAge)
+        }
+        return descriptions
     }
 
     private func actionButton(title: String, systemImage: String, action: @escaping () -> Void) -> some View {

@@ -28,7 +28,8 @@ private func repository() throws -> SQLiteClipboardRepository {
         #expect(AppSettings.retentionOptions == [1, 7, 14, 30, 60])
         #expect(AppSettings.defaultClipboardEnabled)
         #expect(AppSettings.defaultShowClipboardPreviews)
-        #expect(AppSettings.defaultShowClipboardMetadata)
+        #expect(AppSettings.defaultClipboardDescriptionOptions == Set(ClipboardDescriptionOption.allCases))
+        #expect(AppSettings.defaultShowAllClipboardDescriptions)
         #expect(AppSettings.defaultPasteOnSingleClick)
         #expect(AppSettings.maxHistoryBytes == 2 * 1_024 * 1_024 * 1_024)
         #expect(AppSettings.maxImageBytes == 100 * 1_024 * 1_024)
@@ -40,6 +41,11 @@ private func repository() throws -> SQLiteClipboardRepository {
         #expect(ClipboardContentType.richText.label == "Text")
         #expect(ClipboardContentType.html.label == "Text")
         #expect(ClipboardContentType.url.label == "Link")
+        #expect(makeItem("Nabira").characterCount == 6)
+
+        var file = makeItem("/Users/example/file.txt")
+        file.contentType = .files
+        #expect(file.characterCount == nil)
     }
 
     @Test func deduplicatesAndUpdatesRecency() throws {

@@ -46,6 +46,13 @@ struct ClipboardItem: Identifiable, Codable, Hashable, Sendable {
             .flatMap { String(data: $0.data, encoding: .utf8) } ??
         (contentType == .text || contentType == .url ? searchableText : nil)
     }
+
+    var characterCount: Int? {
+        switch contentType {
+        case .text, .richText, .html: searchableText.count
+        default: nil
+        }
+    }
 }
 
 enum HistoryFilter: String, CaseIterable, Identifiable, Sendable {

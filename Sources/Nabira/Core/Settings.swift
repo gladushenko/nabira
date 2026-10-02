@@ -2,6 +2,14 @@ import AppKit
 import Carbon
 import Foundation
 
+enum ClipboardDescriptionOption: String, CaseIterable, Identifiable, Sendable {
+    case contentType = "Content Type"
+    case characterCount = "Character Count"
+    case time = "Time"
+
+    var id: Self { self }
+}
+
 struct GlobalShortcut: Equatable, Sendable {
     let keyCode: UInt32
     let modifiers: UInt32
@@ -34,7 +42,8 @@ final class AppSettings: ObservableObject {
     static let defaultRetentionDays = 30
     static let defaultClipboardEnabled = true
     static let defaultShowClipboardPreviews = true
-    static let defaultShowClipboardMetadata = true
+    static let defaultClipboardDescriptionOptions = Set(ClipboardDescriptionOption.allCases)
+    static let defaultShowAllClipboardDescriptions = true
     static let defaultPasteOnSingleClick = true
     static let maxHistoryBytes = 2 * 1_024 * 1_024 * 1_024
     static let maxItemBytes = 20 * 1_024 * 1_024
@@ -54,7 +63,14 @@ final class AppSettings: ObservableObject {
         }
     }
     @Published var showClipboardPreviews: Bool { didSet { defaults.set(showClipboardPreviews, forKey: "showClipboardPreviews") } }
-    @Published var showClipboardMetadata: Bool { didSet { defaults.set(showClipboardMetadata, forKey: "showClipboardMetadata") } }
+    @Published var clipboardDescriptionOptions: Set<ClipboardDescriptionOption> {
+        didSet {
+            defaults.set(clipboardDescriptionOptions.map(\.rawValue).sorted(), forKey: "clipboardDescriptionOptions")
+        }
+    }
+    @Published var showAllClipboardDescriptions: Bool {
+        didSet { defaults.set(showAllClipboardDescriptions, forKey: "showAllClipboardDescriptions") }
+    }
     @Published var pasteOnSingleClick: Bool { didSet { defaults.set(pasteOnSingleClick, forKey: "pasteOnSingleClick") } }
     @Published var clipboardHistoryShortcut: GlobalShortcut {
         didSet {
@@ -68,11 +84,15 @@ final class AppSettings: ObservableObject {
     @Published var appearance: AppAppearance { didSet { defaults.set(appearance.rawValue, forKey: "appearance"); applyAppearance() } }
 
     private init() {
+        let storedDescriptionOptions = defaults.stringArray(forKey: "clipboardDescriptionOptions")
+        let storedShowAllDescriptions = defaults.object(forKey: "showAllClipboardDescriptions") as? Bool
+        let legacyDescriptionMode = defaults.string(forKey: "clipboardDescriptionMode")
         defaults.register(defaults: [
             "retentionDays": Self.defaultRetentionDays,
             "isClipboardEnabled": Self.defaultClipboardEnabled,
             "showClipboardPreviews": Self.defaultShowClipboardPreviews,
-            "showClipboardMetadata": Self.defaultShowClipboardMetadata,
+            "clipboardDescriptionOptions": Self.defaultClipboardDescriptionOptions.map(\.rawValue),
+            "showAllClipboardDescriptions": Self.defaultShowAllClipboardDescriptions,
             "pasteOnSingleClick": Self.defaultPasteOnSingleClick,
             "clipboardShortcutKeyCode": Int(GlobalShortcut.clipboardHistoryDefault.keyCode),
             "clipboardShortcutModifiers": Int(GlobalShortcut.clipboardHistoryDefault.modifiers),
@@ -83,7 +103,21 @@ final class AppSettings: ObservableObject {
         retentionDays = Self.retentionOptions.contains(storedRetentionDays) ? storedRetentionDays : Self.defaultRetentionDays
         isClipboardEnabled = defaults.bool(forKey: "isClipboardEnabled")
         showClipboardPreviews = defaults.bool(forKey: "showClipboardPreviews")
-        showClipboardMetadata = defaults.bool(forKey: "showClipboardMetadata")
+        let migratedDescriptionOptions: Set<ClipboardDescriptionOption> = switch legacyDescriptionMode {
+        case "Content Type Only": [.contentType]
+        case "Character Count Only": [.characterCount]
+        case "Time Only": [.time]
+        default: Self.defaultClipboardDescriptionOptions
+        }
+        let savedDescriptionOptions = Set(
+            (storedDescriptionOptions ?? []).compactMap(ClipboardDescriptionOption.init(rawValue:))
+        )
+        let showAllDescriptions = storedShowAllDescriptions
+            ?? (legacyDescriptionMode == nil || legacyDescriptionMode == "Show All")
+        showAllClipboardDescriptions = showAllDescriptions
+        clipboardDescriptionOptions = showAllDescriptions
+            ? Self.defaultClipboardDescriptionOptions
+            : (storedDescriptionOptions == nil ? migratedDescriptionOptions : savedDescriptionOptions)
         pasteOnSingleClick = defaults.bool(forKey: "pasteOnSingleClick")
         clipboardHistoryShortcut = GlobalShortcut(
             keyCode: UInt32(defaults.integer(forKey: "clipboardShortcutKeyCode")),
@@ -106,10 +140,26 @@ final class AppSettings: ObservableObject {
     func restoreClipboardDefaults() {
         isClipboardEnabled = Self.defaultClipboardEnabled
         showClipboardPreviews = Self.defaultShowClipboardPreviews
-        showClipboardMetadata = Self.defaultShowClipboardMetadata
+        clipboardDescriptionOptions = Self.defaultClipboardDescriptionOptions
+        showAllClipboardDescriptions = Self.defaultShowAllClipboardDescriptions
         pasteOnSingleClick = Self.defaultPasteOnSingleClick
         retentionDays = Self.defaultRetentionDays
         clipboardHistoryShortcut = .clipboardHistoryDefault
+    }
+
+    func setShowAllClipboardDescriptions(_ enabled: Bool) {
+        showAllClipboardDescriptions = enabled
+        if enabled {
+            clipboardDescriptionOptions = Self.defaultClipboardDescriptionOptions
+        }
+    }
+
+    func setClipboardDescriptionOption(_ option: ClipboardDescriptionOption, enabled: Bool) {
+        if enabled {
+            clipboardDescriptionOptions.insert(option)
+        } else {
+            clipboardDescriptionOptions.remove(option)
+        }
     }
 
     func restoreShortcutDefaults() {
