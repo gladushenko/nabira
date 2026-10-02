@@ -78,7 +78,6 @@ struct LibraryView: View {
                             showMetadata: settings.showClipboardMetadata,
                             pasteOnSingleClick: settings.pasteOnSingleClick,
                             paste: { pasteAndClose(item) },
-                            pastePlainText: { pasteAndClose(item, plain: true) },
                             preview: { preview(item) },
                             toggleFavorite: { model.toggleFavorite(item) }
                         )

@@ -62,74 +62,53 @@ struct ClipboardRow: View {
     let showMetadata: Bool
     let pasteOnSingleClick: Bool
     let paste: () -> Void
-    let pastePlainText: () -> Void
     let preview: () -> Void
     let toggleFavorite: () -> Void
     @StateObject private var state = ClipboardRowState()
+    private let contentHeight: CGFloat = 70
+    private let metadataRowHeight: CGFloat = 10
+    private let actionButtonSize: CGFloat = 10
 
     var body: some View {
-        HStack(spacing: 14) {
-            HStack(spacing: 14) {
-                if showPreview {
-                    SourceIcon(item: item)
-                }
-                VStack(alignment: .leading, spacing: 5) {
-                    if showMetadata {
-                        HStack(spacing: 6) {
+        HStack(alignment: .top, spacing: 12) {
+            if showPreview {
+                SourceIcon(item: item)
+                    .contentShape(Rectangle())
+                    .onTapGesture(count: pasteOnSingleClick ? 1 : 2, perform: paste)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    HStack(spacing: 2) {
+                        if showMetadata {
                             Text(item.contentType.label)
                             Text("•")
                             Text(relativeAge)
                         }
-                        .font(.callout).foregroundStyle(.secondary)
+                        Spacer(minLength: 4)
                     }
-                    Text(displayedContent)
-                        .font(.title2)
-                        .lineLimit(2)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture(count: pasteOnSingleClick ? 1 : 2, perform: paste)
+
+                    actionButtons
                 }
-                Spacer(minLength: 4)
+                .frame(height: metadataRowHeight, alignment: .top)
+
+                Text(displayedContent)
+                    .font(.title2)
+                    .lineLimit(2)
+                    .frame(
+                        maxWidth: .infinity,
+                        minHeight: contentHeight - metadataRowHeight - 6,
+                        alignment: .leading
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture(count: pasteOnSingleClick ? 1 : 2, perform: paste)
             }
-            .contentShape(Rectangle())
-            .onTapGesture(count: pasteOnSingleClick ? 1 : 2, perform: paste)
-
-            HStack(spacing: 8) {
-                Button(action: paste) {
-                    Label("Paste", systemImage: "doc.on.clipboard")
-                        .labelStyle(.iconOnly)
-                        .font(.title3)
-                }
-                .buttonStyle(.borderless)
-                .help("Paste")
-
-                Button(action: pastePlainText) {
-                    Label("Paste as Plain Text", systemImage: "textformat")
-                        .labelStyle(.iconOnly)
-                        .font(.title3)
-                }
-                .buttonStyle(.borderless)
-                .disabled(item.plainText == nil)
-                .help("Paste as Plain Text")
-
-                Button(action: preview) {
-                    Label("Preview", systemImage: "eye")
-                        .labelStyle(.iconOnly)
-                        .font(.title3)
-                }
-                .buttonStyle(.borderless)
-                .help("Preview")
-
-                if item.contentType.canBePinned {
-                    Button(action: toggleFavorite) {
-                        Label(
-                            item.isPinned ? "Remove from Favorites" : "Add to Favorites",
-                            systemImage: item.isPinned ? "star.fill" : "star"
-                        )
-                            .labelStyle(.iconOnly)
-                            .font(.title3)
-                    }
-                    .buttonStyle(.borderless)
-                    .help(item.isPinned ? "Remove from Favorites" : "Add to Favorites")
-                }
-            }
+            .frame(maxWidth: .infinity, minHeight: contentHeight, alignment: .top)
             .padding(.trailing, 14)
         }
         .padding(.vertical, 7)
@@ -140,6 +119,38 @@ struct ClipboardRow: View {
         }
         .onHover { state.isHovering = $0 }
         .animation(.easeOut(duration: 0.12), value: state.isHovering)
+    }
+
+    private var actionButtons: some View {
+        HStack(spacing: 16) {
+            actionButton(title: "Preview", systemImage: "eye", action: preview)
+                .opacity(state.isHovering ? 1 : 0)
+                .allowsHitTesting(state.isHovering)
+                .accessibilityHidden(!state.isHovering)
+
+            if item.contentType.canBePinned {
+                actionButton(
+                    title: item.isPinned ? "Remove from Favorites" : "Add to Favorites",
+                    systemImage: item.isPinned ? "star.fill" : "star",
+                    action: toggleFavorite
+                )
+                .opacity(item.isPinned || state.isHovering ? 1 : 0)
+                .allowsHitTesting(item.isPinned || state.isHovering)
+                .accessibilityHidden(!item.isPinned && !state.isHovering)
+            }
+        }
+        .animation(.easeInOut(duration: 0.05), value: state.isHovering)
+    }
+
+    private func actionButton(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .labelStyle(.iconOnly)
+                .font(.system(size: 12))
+                .frame(width: actionButtonSize, height: actionButtonSize)
+        }
+        .buttonStyle(.borderless)
+        .help(title)
     }
 
     private var displayedContent: String {
