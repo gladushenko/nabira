@@ -273,7 +273,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if libraryWindow == nil {
             let window = ClipboardHistoryWindow(
                 contentRect: NSRect(origin: .zero, size: NSSize(width: 720, height: 500)),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable, .nonactivatingPanel],
+                styleMask: [.titled, .closable, .miniaturizable, .nonactivatingPanel],
                 backing: .buffered,
                 defer: false
             )
@@ -283,6 +283,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.hidesOnDeactivate = false
             window.animationBehavior = .none
             window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+            configureFixedWindowAppearance(window)
             window.dismiss = { [weak window] in window?.dismissAnimated() }
             window.willDismiss = { [weak self] in
                 self?.stopOutsideClickMonitor()
@@ -368,7 +369,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         guard let window = libraryWindow, let screen = NSScreen.main ?? NSScreen.screens.first else { return }
         let visibleFrame = screen.visibleFrame
         let width = min(max(visibleFrame.width * 0.30, 600), 720)
-        let size = NSSize(width: width, height: visibleFrame.height * 0.55)
+        let size = NSSize(width: width, height: visibleFrame.height * 0.65)
         let origin = NSPoint(
             x: visibleFrame.midX - size.width / 2,
             y: visibleFrame.midY - size.height / 2
@@ -413,6 +414,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         guard let services else { return }
         if settingsWindow == nil {
             settingsWindow = makeWindow(title: "Nabira Settings", size: NSSize(width: 760, height: 520), rootView: SettingsView(settings: services.settings, model: services.libraryModel))
+            if let settingsWindow {
+                configureFixedWindowAppearance(settingsWindow)
+                settingsWindow.styleMask.insert(.fullSizeContentView)
+                settingsWindow.titleVisibility = .hidden
+            }
         }
         positionSettingsWindow()
         show(settingsWindow)
@@ -446,6 +452,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         alert.addButton(withTitle: "Cancel")
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         services.libraryModel.clearAll()
+    }
+
+    private func configureFixedWindowAppearance(_ window: NSWindow) {
+        window.titlebarAppearsTransparent = true
+        window.titlebarSeparatorStyle = .none
+        window.backgroundColor = .windowBackgroundColor
+        window.styleMask.remove(.resizable)
+        window.collectionBehavior.insert(.fullScreenNone)
+        window.standardWindowButton(.zoomButton)?.isEnabled = false
     }
 
     private func makeWindow<Content: View>(title: String, size: NSSize, rootView: Content) -> NSWindow {

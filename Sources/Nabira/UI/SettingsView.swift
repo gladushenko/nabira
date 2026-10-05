@@ -150,7 +150,7 @@ struct SettingsView: View {
     @StateObject private var state = SettingsLocalState()
 
     var body: some View {
-        NavigationSplitView {
+        HStack(spacing: 0) {
             List(SettingsModule.allCases, selection: selectionBinding) { module in
                 HStack(spacing: 16) {
                     Image(systemName: module.icon)
@@ -160,13 +160,28 @@ struct SettingsView: View {
                 }
                     .tag(module)
             }
-            .navigationTitle("Settings")
-            .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 220)
-        } detail: {
-            settingsDetail
-                .navigationTitle(selectedModule.rawValue)
-                .toggleStyle(.switch)
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .padding(.top, 38)
+            .frame(width: 190)
+            .background(SettingsSidebarBackground())
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text(selectedModule.rawValue)
+                    .font(.title2.weight(.semibold))
+                    .padding(.horizontal, 20)
+                    .padding(.top, 38)
+                    .padding(.bottom, 8)
+
+                settingsDetail
+                    .toggleStyle(.switch)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .background(Color(nsColor: .windowBackgroundColor))
         }
+        .ignoresSafeArea(.container, edges: .top)
         .frame(minWidth: 760, minHeight: 520)
         .toolbar(.hidden, for: .windowToolbar)
         .onDisappear { state.stopRecordingShortcut() }
@@ -235,6 +250,7 @@ struct SettingsView: View {
                 Picker("Appearance", selection: $settings.appearance) { ForEach(AppAppearance.allCases) { Text($0.rawValue).tag($0) } }
             }
             .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
 
         case .clipboard:
             VStack(spacing: 0) {
@@ -284,6 +300,7 @@ struct SettingsView: View {
                     }
                 }
                 .formStyle(.grouped)
+                .scrollContentBackground(.hidden)
                 .frame(maxHeight: .infinity)
 
                 restoreDefaultsButton(target: .clipboard)
@@ -297,6 +314,7 @@ struct SettingsView: View {
                     }
                 }
                 .formStyle(.grouped)
+                .scrollContentBackground(.hidden)
                 .frame(maxHeight: .infinity)
 
                 restoreDefaultsButton(target: .shortcuts)
@@ -312,6 +330,7 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
         }
     }
 
@@ -378,4 +397,16 @@ struct SettingsView: View {
         do { if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() } }
         catch { state.launchAtLogin = SMAppService.mainApp.status == .enabled; model.errorMessage = error.localizedDescription }
     }
+}
+
+private struct SettingsSidebarBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .sidebar
+        view.blendingMode = .behindWindow
+        view.state = .followsWindowActiveState
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
 }

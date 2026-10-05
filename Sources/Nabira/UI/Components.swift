@@ -65,12 +65,12 @@ struct ClipboardRow: View {
     let preview: () -> Void
     let toggleFavorite: () -> Void
     @StateObject private var state = ClipboardRowState()
-    private let contentHeight: CGFloat = 70
+    private let contentHeight: CGFloat = 94
     private let metadataRowHeight: CGFloat = 10
     private let actionButtonSize: CGFloat = 10
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
             if showPreview {
                 SourceIcon(item: item)
                     .contentShape(Rectangle())
@@ -95,7 +95,7 @@ struct ClipboardRow: View {
 
                 Text(displayedContent)
                     .font(.title2)
-                    .lineLimit(2)
+                    .lineLimit(3)
                     .frame(
                         maxWidth: .infinity,
                         minHeight: contentHeight - metadataRowHeight - 6,
