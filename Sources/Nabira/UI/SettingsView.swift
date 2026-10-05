@@ -323,7 +323,7 @@ struct SettingsView: View {
         case .permissions:
             Form {
                 Section("Accessibility") {
-                    Button("Enable Direct Paste…") { model.pasteCoordinator.requestAccessibility() }
+                    Button("Open Permission Settings…") { model.pasteCoordinator.requestAccessibility() }
                     Text("Accessibility permission lets Nabira paste the selected clipboard item into the previously active application.")
                         .font(.caption)
                         .foregroundStyle(.secondary)

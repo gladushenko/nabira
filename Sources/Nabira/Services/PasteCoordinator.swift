@@ -43,7 +43,7 @@ final class PasteCoordinator: TextInserting {
         guard NSWorkspace.shared.frontmostApplication?.processIdentifier == target.processIdentifier else {
             return .failed("The previous application is no longer active")
         }
-        try? await Task.sleep(for: .milliseconds(150))
+        try? await Task.sleep(for: .milliseconds(50))
 
         guard postCommandV() else {
             return .failed("Could not send paste command")
@@ -57,6 +57,11 @@ final class PasteCoordinator: TextInserting {
     func requestAccessibility() {
         let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
         AXIsProcessTrustedWithOptions(options)
+
+        // Address the permission pane by its identifier, regardless of its displayed name.
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private func postCommandV() -> Bool {

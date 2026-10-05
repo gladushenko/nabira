@@ -6,7 +6,7 @@ struct LibraryView: View {
     @ObservedObject var settings: AppSettings
     let openSettings: () -> Void
     let preview: (ClipboardItem) -> Void
-    let close: () -> Void
+    let close: (@escaping @MainActor () -> Void) -> Void
     private let controlHeight: CGFloat = 28
     private let controlCornerRadius: CGFloat = 10
     private let controlHorizontalPadding: CGFloat = 18
@@ -125,16 +125,18 @@ struct LibraryView: View {
     }
 
     private func pasteAndClose(_ item: ClipboardItem, plain: Bool = false) {
-        close()
-        Task {
-            _ = await model.paste(item, plain: plain)
+        close {
+            Task {
+                _ = await model.paste(item, plain: plain)
+            }
         }
     }
 
     private func transformPasteAndClose(_ item: ClipboardItem, using transformation: TextTransformation) {
-        close()
-        Task {
-            _ = await model.paste(item, transformedBy: transformation)
+        close {
+            Task {
+                _ = await model.paste(item, transformedBy: transformation)
+            }
         }
     }
 

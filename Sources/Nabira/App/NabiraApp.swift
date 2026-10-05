@@ -34,11 +34,9 @@ private struct ClipboardMenuToggleView: View {
 private final class ClipboardHistoryWindow: NSPanel {
     var dismiss: (() -> Void)?
     var willDismiss: (() -> Void)?
-    private var isDismissing = false
     private var restingFrame: NSRect?
 
     func presentAnimated() {
-        isDismissing = false
         let finalFrame = frame
         restingFrame = finalFrame
         alphaValue = 0
@@ -54,40 +52,16 @@ private final class ClipboardHistoryWindow: NSPanel {
         }
     }
 
-    func dismissAnimated() {
-        guard isVisible, !isDismissing else { return }
-        isDismissing = true
-        willDismiss?()
-        let finalFrame = restingFrame ?? frame
-
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.07
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            animator().setFrame(horizontallyScaledFrame(from: finalFrame, scale: 1.025), display: true)
-        } completionHandler: { [weak self] in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                NSAnimationContext.runAnimationGroup { context in
-                    context.duration = 0.12
-                    context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-                    animator().alphaValue = 0
-                    animator().setFrame(horizontallyScaledFrame(from: finalFrame, scale: 0.92), display: true)
-                } completionHandler: { [weak self] in
-                    Task { @MainActor [weak self] in
-                        guard let self else { return }
-                        orderOut(nil)
-                        setFrame(finalFrame, display: false)
-                        alphaValue = 1
-                        isDismissing = false
-                    }
-                }
-            }
+    func dismissImmediately(completion: (@MainActor () -> Void)? = nil) {
+        guard isVisible else {
+            completion?()
+            return
         }
-    }
-
-    private func horizontallyScaledFrame(from frame: NSRect, scale: CGFloat) -> NSRect {
-        let width = frame.width * scale
-        return NSRect(x: frame.midX - width / 2, y: frame.minY, width: width, height: frame.height)
+        willDismiss?()
+        orderOut(nil)
+        if let restingFrame { setFrame(restingFrame, display: false) }
+        alphaValue = 1
+        completion?()
     }
 
     private func scaledFrame(from frame: NSRect) -> NSRect {
@@ -264,7 +238,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc private func openLibrary() {
         guard let services else { return }
         if libraryWindow?.isVisible == true {
-            libraryWindow?.dismissAnimated()
+            libraryWindow?.dismissImmediately()
             return
         }
         services.pasteCoordinator.captureTarget()
@@ -284,7 +258,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.animationBehavior = .none
             window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
             configureFixedWindowAppearance(window)
-            window.dismiss = { [weak window] in window?.dismissAnimated() }
+            window.dismiss = { [weak window] in window?.dismissImmediately() }
             window.willDismiss = { [weak self] in
                 self?.stopOutsideClickMonitor()
                 self?.hidePreviewForLibraryDismissal()
@@ -293,11 +267,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 model: services.libraryModel,
                 settings: services.settings,
                 openSettings: { [weak self, weak window] in
-                    window?.dismissAnimated()
+                    window?.dismissImmediately()
                     self?.openClipboardSettings()
                 },
                 preview: { [weak self] item in self?.openPreview(item) },
-                close: { [weak window] in window?.dismissAnimated() }
+                close: { [weak window] completion in
+                    guard let window else {
+                        completion()
+                        return
+                    }
+                    window.dismissImmediately(completion: completion)
+                }
             ))
             libraryWindow = window
             libraryWindow?.delegate = self
@@ -315,7 +295,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.libraryWindow?.dismissAnimated()
+                self?.libraryWindow?.dismissImmediately()
             }
         }
     }
@@ -386,7 +366,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let keyWindow = NSApp.keyWindow
             guard keyWindow !== self.libraryWindow, keyWindow !== self.previewWindow else { return }
             guard self.services?.libraryModel.favoritesLimitMessage == nil else { return }
-            self.libraryWindow?.dismissAnimated()
+            self.libraryWindow?.dismissImmediately()
         }
     }
 
