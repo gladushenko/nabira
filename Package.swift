@@ -10,7 +10,8 @@ let package = Package(
         .executableTarget(
             name: "Nabira",
             dependencies: ["CSQLite"],
-            path: "Sources/Nabira"
+            path: "Sources/Nabira",
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "NabiraTests",

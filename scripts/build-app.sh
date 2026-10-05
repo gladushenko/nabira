@@ -13,11 +13,24 @@ FINAL_APP="$ROOT/dist/Nabira.app"
 BIN="$SCRATCH/$CONFIGURATION/Nabira"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Nabira"
+cp -R "$SCRATCH/$CONFIGURATION/Nabira_Nabira.bundle" "$APP/Contents/Resources/"
+
+ICONSET="$STAGE/AppIcon.iconset"
+mkdir -p "$ICONSET"
+for SIZE in 16 32 128 256 512; do
+    sips -z "$SIZE" "$SIZE" "$ROOT/assets/branding/nabira-app-icon.png" \
+        --out "$ICONSET/icon_${SIZE}x${SIZE}.png" >/dev/null
+    DOUBLE_SIZE=$((SIZE * 2))
+    sips -z "$DOUBLE_SIZE" "$DOUBLE_SIZE" "$ROOT/assets/branding/nabira-app-icon.png" \
+        --out "$ICONSET/icon_${SIZE}x${SIZE}@2x.png" >/dev/null
+done
+iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 /usr/libexec/PlistBuddy -c "Clear dict" "$APP/Contents/Info.plist" 2>/dev/null || true
 /usr/libexec/PlistBuddy -c "Add :CFBundleExecutable string Nabira" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string com.nabira.app" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :CFBundleName string Nabira" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string Nabira" "$APP/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string APPL" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string 1.0.0" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string 1" "$APP/Contents/Info.plist"

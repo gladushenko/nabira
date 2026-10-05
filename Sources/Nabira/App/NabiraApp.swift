@@ -175,7 +175,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func configureMenuBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem?.button?.image = NSImage(systemSymbolName: "clipboard", accessibilityDescription: "Nabira")
+        if let url = Bundle.module.url(forResource: "MenuBarIcon", withExtension: "png"),
+           let image = NSImage(contentsOf: url) {
+            image.size = NSSize(width: 18, height: 18)
+            image.isTemplate = true
+            image.accessibilityDescription = "Nabira"
+            statusItem?.button?.image = image
+        }
         let menu = NSMenu()
         let clipboardHistoryItem = item("Show Clipboard", action: #selector(openLibrary))
         clipboardHistoryMenuItem = clipboardHistoryItem
