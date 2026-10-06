@@ -58,6 +58,7 @@ struct SourceIcon: View {
 
 struct ClipboardRow: View {
     let item: ClipboardItem
+    var isLastCopied = false
     let showPreview: Bool
     let descriptionOptions: Set<ClipboardDescriptionOption>
     let pasteOnSingleClick: Bool
@@ -111,8 +112,9 @@ struct ClipboardRow: View {
         .contentShape(Rectangle())
         .background {
             RoundedRectangle(cornerRadius: 8)
-                .fill(state.isHovering ? Color.accentColor.opacity(0.12) : Color.clear)
+                .fill(isLastCopied ? Color.accentColor.opacity(0.20) : state.isHovering ? Color.accentColor.opacity(0.12) : Color.clear)
         }
+        .accessibilityValue(isLastCopied ? "Last copied item" : "")
         .onHover { state.isHovering = $0 }
         .animation(.easeOut(duration: 0.12), value: state.isHovering)
     }

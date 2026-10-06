@@ -7,6 +7,7 @@ final class HistoryViewModel: ObservableObject {
     @Published var query = "" { didSet { scheduleReload() } }
     @Published var filter: HistoryFilter = .all { didSet { reload() } }
     @Published var selection: UUID?
+    @Published var lastCopiedItemID: UUID?
     @Published var notice: String?
     @Published var errorMessage: String?
     @Published var favoritesLimitMessage: String?
@@ -20,6 +21,7 @@ final class HistoryViewModel: ObservableObject {
         self.repository = repository
         self.pasteCoordinator = pasteCoordinator
         pasteCoordinator.onNotice = { [weak self] in self?.notice = $0 }
+        pasteCoordinator.onCopied = { [weak self] in self?.lastCopiedItemID = $0 }
     }
 
     var selectedItem: ClipboardItem? { items.first(where: { $0.id == selection }) }

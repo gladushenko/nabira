@@ -74,6 +74,7 @@ struct LibraryView: View {
                     List(model.items) { item in
                         ClipboardRow(
                             item: item,
+                            isLastCopied: model.lastCopiedItemID == item.id,
                             showPreview: settings.showClipboardPreviews,
                             descriptionOptions: settings.clipboardDescriptionOptions,
                             pasteOnSingleClick: settings.pasteOnSingleClick,

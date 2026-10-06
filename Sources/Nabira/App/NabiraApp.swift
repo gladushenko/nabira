@@ -124,7 +124,10 @@ final class AppServices {
         monitor = ClipboardMonitor(repository: repository, privacy: PrivacyGuard(), settings: settings)
         pasteCoordinator = PasteCoordinator(monitor: monitor)
         libraryModel = HistoryViewModel(repository: repository, pasteCoordinator: pasteCoordinator)
-        monitor.onCapture = { [weak libraryModel] _ in libraryModel?.reload() }
+        monitor.onCapture = { [weak libraryModel] item in
+            libraryModel?.lastCopiedItemID = item.id
+            libraryModel?.reload()
+        }
     }
 }
 

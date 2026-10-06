@@ -8,6 +8,7 @@ final class PasteCoordinator: TextInserting {
     private weak var monitor: ClipboardMonitor?
     private var targetApplication: NSRunningApplication?
     var onNotice: ((String) -> Void)?
+    var onCopied: ((UUID) -> Void)?
 
     init(pasteboard: NSPasteboard = .general, monitor: ClipboardMonitor) {
         self.pasteboard = pasteboard
@@ -21,7 +22,6 @@ final class PasteCoordinator: TextInserting {
     }
 
     func paste(_ item: ClipboardItem, asPlainText: Bool) async -> PasteResult {
-        let backup = captureCurrentPasteboard()
         pasteboard.clearContents()
         if asPlainText {
             guard let text = item.plainText else { return .failed("No text representation") }
@@ -34,6 +34,7 @@ final class PasteCoordinator: TextInserting {
             guard pasteboard.writeObjects([output]) else { return .failed("Could not write pasteboard") }
         }
         monitor?.ignore(changeCount: pasteboard.changeCount)
+        onCopied?(item.id)
 
         guard AXIsProcessTrusted() else {
             onNotice?("Copied. Enable Accessibility in System Settings for direct paste.")
@@ -48,9 +49,6 @@ final class PasteCoordinator: TextInserting {
         guard postCommandV() else {
             return .failed("Could not send paste command")
         }
-        try? await Task.sleep(for: .milliseconds(350))
-        restore(backup)
-        monitor?.ignore(changeCount: pasteboard.changeCount)
         return .inserted
     }
 
@@ -80,16 +78,4 @@ final class PasteCoordinator: TextInserting {
         return true
     }
 
-    private func captureCurrentPasteboard() -> [PasteboardRepresentation] {
-        pasteboard.pasteboardItems?.first?.types.compactMap { type in
-            pasteboard.data(forType: type).map { PasteboardRepresentation(type: type.rawValue, data: $0) }
-        } ?? []
-    }
-
-    private func restore(_ values: [PasteboardRepresentation]) {
-        pasteboard.clearContents()
-        let item = NSPasteboardItem()
-        values.forEach { item.setData($0.data, forType: .init($0.type)) }
-        pasteboard.writeObjects([item])
-    }
 }
