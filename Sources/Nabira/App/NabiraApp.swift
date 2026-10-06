@@ -33,6 +33,7 @@ private struct ClipboardMenuToggleView: View {
 
 private final class ClipboardHistoryWindow: NSPanel {
     var dismiss: (() -> Void)?
+    var openSettings: (() -> Void)?
     var willDismiss: (() -> Void)?
     private var restingFrame: NSRect?
 
@@ -68,6 +69,16 @@ private final class ClipboardHistoryWindow: NSPanel {
         frame.insetBy(dx: frame.width * 0.015, dy: frame.height * 0.015)
     }
 
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if event.type == .keyDown, event.keyCode == 43,
+           modifiers.subtracting([.capsLock, .numericPad, .function]) == [.command] {
+            openSettings?()
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
     override func sendEvent(_ event: NSEvent) {
         if event.type == .keyDown, event.keyCode == 53 {
             dismiss?()
@@ -88,6 +99,12 @@ struct NabiraApp: App {
     var body: some Scene {
         Settings {
             if let services = delegate.services { SettingsView(settings: services.settings, model: services.libraryModel) }
+        }
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("Nabira Settings…") { delegate.openSettings() }
+                    .keyboardShortcut(",", modifiers: .command)
+            }
         }
     }
 }
@@ -122,6 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var onboardingWindow: NSWindow?
     private var isClosingPreview = false
     private var outsideClickMonitor: Any?
+    private weak var windowAwaitingActivation: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(AppSettings.shared.showInDock ? .regular : .accessory)
@@ -159,6 +177,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         } catch {
             let alert = NSAlert(error: error); alert.runModal(); NSApp.terminate(nil)
         }
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        windowAwaitingActivation?.makeKeyAndOrderFront(nil)
+        windowAwaitingActivation = nil
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -265,6 +288,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
             configureFixedWindowAppearance(window)
             window.dismiss = { [weak window] in window?.dismissImmediately() }
+            window.openSettings = { [weak self] in self?.openSettings() }
             window.willDismiss = { [weak self] in
                 self?.stopOutsideClickMonitor()
                 self?.hidePreviewForLibraryDismissal()
@@ -396,8 +420,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             self?.isClosingPreview = false
         }
     }
-    @objc private func openSettings() {
+    @objc func openSettings() {
+        scheduleSettingsPresentation(showClipboardSection: false)
+    }
+
+    private func scheduleSettingsPresentation(showClipboardSection: Bool) {
+        // Menu tracking must finish before a window takes keyboard focus.
+        RunLoop.main.perform(inModes: [.default]) { [weak self] in
+            MainActor.assumeIsolated {
+                self?.presentSettings(showClipboardSection: showClipboardSection)
+            }
+        }
+    }
+
+    private func presentSettings(showClipboardSection: Bool) {
         guard let services else { return }
+        libraryWindow?.dismissImmediately()
         if settingsWindow == nil {
             settingsWindow = makeWindow(title: "Nabira Settings", size: NSSize(width: 760, height: 520), rootView: SettingsView(settings: services.settings, model: services.libraryModel))
             if let settingsWindow {
@@ -408,13 +446,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         positionSettingsWindow()
         show(settingsWindow)
+        if showClipboardSection {
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .showClipboardSettings, object: nil)
+            }
+        }
     }
 
     private func openClipboardSettings() {
-        openSettings()
-        DispatchQueue.main.async {
-            NotificationCenter.default.post(name: .showClipboardSettings, object: nil)
-        }
+        scheduleSettingsPresentation(showClipboardSection: true)
     }
 
     private func positionSettingsWindow() {
@@ -457,7 +497,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func show(_ window: NSWindow?) {
-        NSApp.activate(); window?.makeKeyAndOrderFront(nil)
+        guard let window else { return }
+        if window.isMiniaturized { window.deminiaturize(nil) }
+        windowAwaitingActivation = NSApp.isActive ? nil : window
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
     }
 
     private func showOnboarding() {
