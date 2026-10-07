@@ -2,12 +2,10 @@ import Carbon
 import Foundation
 
 @MainActor
-final class GlobalShortcutManager: ShortcutHandling {
+final class GlobalShortcutManager {
     private var refs: [UInt32: EventHotKeyRef] = [:]
     private var handler: EventHandlerRef?
     private var actions: [UInt32: () -> Void] = [:]
-
-    func registerDefaultShortcuts() { }
 
     func register(id: UInt32, keyCode: UInt32, modifiers: UInt32, action: @escaping () -> Void) {
         unregister(id: id)

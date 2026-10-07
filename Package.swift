@@ -15,12 +15,8 @@ let package = Package(
         ),
         .testTarget(
             name: "NabiraTests",
-            dependencies: ["Nabira"],
-            path: "Tests/NabiraTests",
-            swiftSettings: [.unsafeFlags([
-                "-Xfrontend", "-load-plugin-library", "-Xfrontend",
-                "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing/libTestingMacros.dylib"
-            ])]
+            dependencies: ["Nabira", "CSQLite"],
+            path: "Tests/NabiraTests"
         )
     ]
 )

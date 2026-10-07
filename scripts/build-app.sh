@@ -4,7 +4,24 @@ set -euo pipefail
 ROOT="${0:A:h:h}"
 CONFIGURATION="${1:-release}"
 SCRATCH="${NABIRA_BUILD_DIR:-/tmp/nabira-spm-build}"
-swift build --package-path "$ROOT" --scratch-path "$SCRATCH" -c "$CONFIGURATION"
+
+# SwiftUI macros in recent SDKs require the platform plugins shipped with Xcode.
+# Choose tools for this process without changing the system's xcode-select setting.
+if [[ -z "${DEVELOPER_DIR:-}" ]]; then
+    NABIRA_DEVELOPER_DIR="$(xcode-select -p)"
+    if [[ ! -d "$NABIRA_DEVELOPER_DIR/Platforms/MacOSX.platform" ]]; then
+        NABIRA_DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+    fi
+    export DEVELOPER_DIR="$NABIRA_DEVELOPER_DIR"
+fi
+if [[ "$DEVELOPER_DIR" == *.app ]]; then
+    export DEVELOPER_DIR="$DEVELOPER_DIR/Contents/Developer"
+fi
+if [[ ! -d "$DEVELOPER_DIR/Platforms/MacOSX.platform" ]]; then
+    print -u2 'Nabira requires full Xcode. Set DEVELOPER_DIR to Xcode.app/Contents/Developer.'
+    exit 1
+fi
+xcrun swift build --package-path "$ROOT" --scratch-path "$SCRATCH" -c "$CONFIGURATION"
 
 STAGE="$(mktemp -d /tmp/nabira-app.XXXXXX)"
 trap 'rm -rf "$STAGE"' EXIT

@@ -23,6 +23,8 @@ enum ClipboardContentType: String, Codable, CaseIterable, Sendable {
 struct PasteboardRepresentation: Codable, Hashable, Sendable {
     let type: String
     let data: Data
+    // Missing for older records and single-item captures; both mean item zero.
+    var itemIndex: Int? = nil
 }
 
 struct ClipboardItem: Identifiable, Codable, Hashable, Sendable {
@@ -40,11 +42,13 @@ struct ClipboardItem: Identifiable, Codable, Hashable, Sendable {
     var isPinned: Bool
     var contentHash: String
     var pinnedOrder: Int?
+    // List queries omit payloads; load the full item by id before paste or preview.
+    var hasLoadedRepresentations = true
 
     var plainText: String? {
         representations.first(where: { $0.type == NSPasteboard.PasteboardType.string.rawValue })
             .flatMap { String(data: $0.data, encoding: .utf8) } ??
-        (contentType == .text || contentType == .url ? searchableText : nil)
+        ([.text, .url, .richText, .html, .color].contains(contentType) ? searchableText : nil)
     }
 
     var characterCount: Int? {

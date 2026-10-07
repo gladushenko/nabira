@@ -1,6 +1,6 @@
 import Foundation
 
-struct TextTransformer: ContentTransforming {
+actor TextTransformer {
     func transform(_ text: String, using transformation: TextTransformation) throws -> String {
         switch transformation {
         case .uppercase: return text.uppercased()

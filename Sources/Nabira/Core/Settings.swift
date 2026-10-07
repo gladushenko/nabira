@@ -1,6 +1,7 @@
 import AppKit
 import Carbon
 import Foundation
+import Observation
 
 enum ClipboardDescriptionOption: String, CaseIterable, Identifiable, Sendable {
     case contentType = "Content Type"
@@ -35,7 +36,8 @@ struct SettingsSnapshot: Sendable {
 }
 
 @MainActor
-final class AppSettings: ObservableObject {
+@Observable
+final class AppSettings {
     static let shared = AppSettings()
     static let maxItems = 300
     nonisolated static let maxPinnedItems = 10
@@ -50,29 +52,35 @@ final class AppSettings: ObservableObject {
     static let maxImageBytes = 100 * 1_024 * 1_024
     static let retentionOptions = [1, 7, 14, 30, 60]
 
-    private let defaults = UserDefaults.standard
-    var onClipboardHistoryShortcutChange: ((GlobalShortcut) -> Void)?
-    var onClipboardHistoryShortcutRecordingChange: ((Bool) -> Void)?
-    var onClipboardEnabledChange: ((Bool) -> Void)?
+    private let defaults: UserDefaults
+    @ObservationIgnored var onClipboardHistoryShortcutChange: ((GlobalShortcut) -> Void)?
+    @ObservationIgnored var onClipboardHistoryShortcutRecordingChange: ((Bool) -> Void)?
+    @ObservationIgnored var onClipboardEnabledChange: ((Bool) -> Void)?
 
-    @Published var retentionDays: Int { didSet { defaults.set(retentionDays, forKey: "retentionDays") } }
-    @Published var isClipboardEnabled: Bool {
+    @ObservationIgnored var onRetentionDaysChange: (() -> Void)?
+    var retentionDays: Int {
+        didSet {
+            defaults.set(retentionDays, forKey: "retentionDays")
+            onRetentionDaysChange?()
+        }
+    }
+    var isClipboardEnabled: Bool {
         didSet {
             defaults.set(isClipboardEnabled, forKey: "isClipboardEnabled")
             onClipboardEnabledChange?(isClipboardEnabled)
         }
     }
-    @Published var showClipboardPreviews: Bool { didSet { defaults.set(showClipboardPreviews, forKey: "showClipboardPreviews") } }
-    @Published var clipboardDescriptionOptions: Set<ClipboardDescriptionOption> {
+    var showClipboardPreviews: Bool { didSet { defaults.set(showClipboardPreviews, forKey: "showClipboardPreviews") } }
+    var clipboardDescriptionOptions: Set<ClipboardDescriptionOption> {
         didSet {
             defaults.set(clipboardDescriptionOptions.map(\.rawValue).sorted(), forKey: "clipboardDescriptionOptions")
         }
     }
-    @Published var showAllClipboardDescriptions: Bool {
+    var showAllClipboardDescriptions: Bool {
         didSet { defaults.set(showAllClipboardDescriptions, forKey: "showAllClipboardDescriptions") }
     }
-    @Published var pasteOnSingleClick: Bool { didSet { defaults.set(pasteOnSingleClick, forKey: "pasteOnSingleClick") } }
-    @Published var clipboardHistoryShortcut: GlobalShortcut {
+    var pasteOnSingleClick: Bool { didSet { defaults.set(pasteOnSingleClick, forKey: "pasteOnSingleClick") } }
+    var clipboardHistoryShortcut: GlobalShortcut {
         didSet {
             defaults.set(Int(clipboardHistoryShortcut.keyCode), forKey: "clipboardShortcutKeyCode")
             defaults.set(Int(clipboardHistoryShortcut.modifiers), forKey: "clipboardShortcutModifiers")
@@ -80,10 +88,11 @@ final class AppSettings: ObservableObject {
             onClipboardHistoryShortcutChange?(clipboardHistoryShortcut)
         }
     }
-    @Published var showInDock: Bool { didSet { defaults.set(showInDock, forKey: "showInDock"); applyDockPolicy() } }
-    @Published var appearance: AppAppearance { didSet { defaults.set(appearance.rawValue, forKey: "appearance"); applyAppearance() } }
+    var showInDock: Bool { didSet { defaults.set(showInDock, forKey: "showInDock"); applyDockPolicy() } }
+    var appearance: AppAppearance { didSet { defaults.set(appearance.rawValue, forKey: "appearance"); applyAppearance() } }
 
-    private init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         let storedDescriptionOptions = defaults.stringArray(forKey: "clipboardDescriptionOptions")
         let storedShowAllDescriptions = defaults.object(forKey: "showAllClipboardDescriptions") as? Bool
         let legacyDescriptionMode = defaults.string(forKey: "clipboardDescriptionMode")

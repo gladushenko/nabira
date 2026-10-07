@@ -1,5 +1,6 @@
 import AppKit
 import Carbon
+import Observation
 import ServiceManagement
 import SwiftUI
 
@@ -26,18 +27,18 @@ private enum SettingsModule: String, CaseIterable, Identifiable {
 
 }
 
-@MainActor private final class SettingsLocalState: ObservableObject {
-    @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
-    @Published var selection: SettingsModule? = .general
-    @Published var isClearHistoryConfirmationPresented = false
-    @Published var restoreDefaultsTarget: SettingsModule?
-    @Published var isRecordingShortcut = false
-    @Published var recordedShortcutDisplay: String?
-    @Published var shortcutValidationMessage: String?
-    private var shortcutMonitor: Any?
-    private var shortcutMouseMonitor: Any?
-    private var pendingShortcut: GlobalShortcut?
-    private var recordingDidChange: ((Bool) -> Void)?
+@MainActor @Observable private final class SettingsLocalState {
+    var launchAtLogin = SMAppService.mainApp.status == .enabled
+    var selection: SettingsModule? = .general
+    var isClearHistoryConfirmationPresented = false
+    var restoreDefaultsTarget: SettingsModule?
+    var isRecordingShortcut = false
+    var recordedShortcutDisplay: String?
+    var shortcutValidationMessage: String?
+    @ObservationIgnored private var shortcutMonitor: Any?
+    @ObservationIgnored private var shortcutMouseMonitor: Any?
+    @ObservationIgnored private var pendingShortcut: GlobalShortcut?
+    @ObservationIgnored private var recordingDidChange: ((Bool) -> Void)?
 
     func startRecordingShortcut(
         recordingDidChange: @escaping (Bool) -> Void,
@@ -145,9 +146,9 @@ private enum SettingsModule: String, CaseIterable, Identifiable {
 }
 
 struct SettingsView: View {
-    @ObservedObject var settings: AppSettings
-    @ObservedObject var model: HistoryViewModel
-    @StateObject private var state = SettingsLocalState()
+    @Bindable var settings: AppSettings
+    @Bindable var model: HistoryViewModel
+    @State private var state = SettingsLocalState()
 
     var body: some View {
         HStack(spacing: 0) {

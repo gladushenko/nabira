@@ -11,8 +11,8 @@ private func makeItem(_ text: String, date: Date = .now) -> ClipboardItem {
                          isPinned: false, contentHash: ContentHasher.hash([representation]), pinnedOrder: nil)
 }
 
-private func repository() throws -> SQLiteClipboardRepository {
-    try SQLiteClipboardRepository(path: FileManager.default.temporaryDirectory.appending(path: "nabira-\(UUID().uuidString).sqlite3").path)
+private func repository() async throws -> SQLiteClipboardRepository {
+    try await SQLiteClipboardRepository(path: FileManager.default.temporaryDirectory.appending(path: "nabira-\(UUID().uuidString).sqlite3").path)
 }
 
 @Suite struct NabiraTests {
@@ -48,92 +48,92 @@ private func repository() throws -> SQLiteClipboardRepository {
         #expect(file.characterCount == nil)
     }
 
-    @Test func deduplicatesAndUpdatesRecency() throws {
-        let repo = try repository()
+    @Test func deduplicatesAndUpdatesRecency() async throws {
+        let repo = try await repository()
         let first = makeItem("same", date: Date(timeIntervalSince1970: 1))
-        _ = try repo.upsert(first)
+        _ = try await repo.upsert(first)
         var second = makeItem("same", date: Date(timeIntervalSince1970: 2))
         second.contentHash = first.contentHash
-        let stored = try repo.upsert(second)
-        #expect(try repo.recent(limit: 10, filter: .all).count == 1)
+        let stored = try await repo.upsert(second)
+        #expect(try await repo.recent(limit: 10, filter: .all).count == 1)
         #expect(stored.copyCount == 2)
         #expect(stored.lastCopiedAt == second.lastCopiedAt)
     }
 
-    @Test func pinnedItemsSurvivePruning() throws {
-        let repo = try repository()
+    @Test func pinnedItemsSurvivePruning() async throws {
+        let repo = try await repository()
         let old = makeItem("old", date: Date(timeIntervalSince1970: 1))
-        _ = try repo.upsert(old)
-        try repo.setPinned(true, id: old.id)
-        try repo.prune(maxItems: 1, maxBytes: 1, olderThan: .now)
-        #expect(try repo.item(id: old.id) != nil)
+        _ = try await repo.upsert(old)
+        try await repo.setPinned(true, id: old.id)
+        try await repo.prune(maxItems: 1, maxBytes: 1, olderThan: .now)
+        #expect(try await repo.item(id: old.id) != nil)
     }
 
-    @Test func pruningKeepsNewestItemsWithinStorageLimit() throws {
-        let repo = try repository()
+    @Test func pruningKeepsNewestItemsWithinStorageLimit() async throws {
+        let repo = try await repository()
         let old = makeItem("12345", date: Date(timeIntervalSince1970: 1))
         let new = makeItem("67890", date: Date(timeIntervalSince1970: 2))
-        _ = try repo.upsert(old)
-        _ = try repo.upsert(new)
+        _ = try await repo.upsert(old)
+        _ = try await repo.upsert(new)
 
-        try repo.prune(maxItems: 10, maxBytes: 5, olderThan: .distantPast)
+        try await repo.prune(maxItems: 10, maxBytes: 5, olderThan: .distantPast)
 
-        #expect(try repo.item(id: old.id) == nil)
-        #expect(try repo.item(id: new.id) != nil)
+        #expect(try await repo.item(id: old.id) == nil)
+        #expect(try await repo.item(id: new.id) != nil)
     }
 
-    @Test func imagesAndFilesCannotBePinned() throws {
-        let repo = try repository()
+    @Test func imagesAndFilesCannotBePinned() async throws {
+        let repo = try await repository()
         for type in [ClipboardContentType.image, .files] {
             var item = makeItem(type.rawValue)
             item.contentType = type
-            _ = try repo.upsert(item)
+            _ = try await repo.upsert(item)
 
-            try repo.setPinned(true, id: item.id)
+            try await repo.setPinned(true, id: item.id)
 
-            #expect(try repo.item(id: item.id)?.isPinned == false)
+            #expect(try await repo.item(id: item.id)?.isPinned == false)
         }
     }
 
-    @Test func noMoreThanTenItemsCanBePinned() throws {
-        let repo = try repository()
+    @Test func noMoreThanTenItemsCanBePinned() async throws {
+        let repo = try await repository()
         for index in 0..<AppSettings.maxPinnedItems {
             let item = makeItem("pinned \(index)")
-            _ = try repo.upsert(item)
-            try repo.setPinned(true, id: item.id)
+            _ = try await repo.upsert(item)
+            try await repo.setPinned(true, id: item.id)
         }
         let extra = makeItem("one too many")
-        _ = try repo.upsert(extra)
+        _ = try await repo.upsert(extra)
 
         var reachedLimit = false
         do {
-            try repo.setPinned(true, id: extra.id)
+            try await repo.setPinned(true, id: extra.id)
         } catch NabiraError.pinLimitReached(let limit) {
             reachedLimit = limit == AppSettings.maxPinnedItems
         }
 
         #expect(reachedLimit)
-        #expect(try repo.item(id: extra.id)?.isPinned == false)
+        #expect(try await repo.item(id: extra.id)?.isPinned == false)
     }
 
-    @Test func clearAllRemovesPinnedAndUnpinnedItems() throws {
-        let repo = try repository()
+    @Test func clearAllRemovesPinnedAndUnpinnedItems() async throws {
+        let repo = try await repository()
         let pinned = makeItem("pinned")
         let unpinned = makeItem("unpinned")
-        _ = try repo.upsert(pinned)
-        _ = try repo.upsert(unpinned)
-        try repo.setPinned(true, id: pinned.id)
+        _ = try await repo.upsert(pinned)
+        _ = try await repo.upsert(unpinned)
+        try await repo.setPinned(true, id: pinned.id)
 
-        try repo.clear(since: nil, includePinned: true)
+        try await repo.clear(since: nil, includePinned: true)
 
-        #expect(try repo.recent(limit: 10, filter: .all).isEmpty)
+        #expect(try await repo.recent(limit: 10, filter: .all).isEmpty)
     }
 
-    @Test func fullTextSearch() throws {
-        let repo = try repository()
-        _ = try repo.upsert(makeItem("a surprisingly specific nebula phrase"))
-        #expect(try repo.search("nebula", filter: .all, limit: 10).count == 1)
-        #expect(try repo.search("missing", filter: .all, limit: 10).isEmpty)
+    @Test func fullTextSearch() async throws {
+        let repo = try await repository()
+        _ = try await repo.upsert(makeItem("a surprisingly specific nebula phrase"))
+        #expect(try await repo.search("nebula", filter: .all, limit: 10).count == 1)
+        #expect(try await repo.search("missing", filter: .all, limit: 10).isEmpty)
     }
 
     @Test func captureGuardFiltersLargeItems() {
@@ -148,11 +148,11 @@ private func repository() throws -> SQLiteClipboardRepository {
         #expect(guardService.decision(for: .init(representations: [rep], sourceBundleID: nil, searchableText: "123456", contentType: .text, byteCount: 6), settings: settings) == .allow)
     }
 
-    @Test func textTransformations() throws {
+    @Test func textTransformations() async throws {
         let transformer = TextTransformer()
-        #expect(try transformer.transform("  a   b  ", using: .collapseSpaces) == "a b")
-        #expect(try transformer.transform("  Nabira   is   awesome  ", using: .spacesToUnderscores) == "Nabira_is_awesome")
-        #expect(try transformer.transform("{\"b\":2,\"a\":1}", using: .jsonMinify) == "{\"a\":1,\"b\":2}")
+        #expect(try await transformer.transform("  a   b  ", using: .collapseSpaces) == "a b")
+        #expect(try await transformer.transform("  Nabira   is   awesome  ", using: .spacesToUnderscores) == "Nabira_is_awesome")
+        #expect(try await transformer.transform("{\"b\":2,\"a\":1}", using: .jsonMinify) == "{\"a\":1,\"b\":2}")
     }
 
     @MainActor @Test func fileURLIsDisplayedAsAPath() {
@@ -167,12 +167,12 @@ private func repository() throws -> SQLiteClipboardRepository {
         #expect(classified.text == "/Users/example/My File.txt")
     }
 
-    @MainActor @Test func selfCaptureChangeCountCanBeIgnored() throws {
+    @MainActor @Test func selfCaptureChangeCountCanBeIgnored() async throws {
         let board = NSPasteboard(name: .init("NabiraTests-\(UUID())"))
-        let repo = try repository()
+        let repo = try await repository()
         let monitor = ClipboardMonitor(pasteboard: board, repository: repo, privacy: PrivacyGuard(), settings: AppSettings.shared)
         board.clearContents(); board.setString("internal", forType: .string)
-        monitor.ignore(changeCount: board.changeCount); monitor.poll()
-        #expect(try repo.recent(limit: 10, filter: .all).isEmpty)
+        monitor.ignore(changeCount: board.changeCount); await monitor.poll()
+        #expect(try await repo.recent(limit: 10, filter: .all).isEmpty)
     }
 }

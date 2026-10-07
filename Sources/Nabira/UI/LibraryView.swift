@@ -2,8 +2,8 @@ import AppKit
 import SwiftUI
 
 struct LibraryView: View {
-    @ObservedObject var model: HistoryViewModel
-    @ObservedObject var settings: AppSettings
+    @Bindable var model: HistoryViewModel
+    @Bindable var settings: AppSettings
     let openSettings: () -> Void
     let preview: (ClipboardItem) -> Void
     let close: (@escaping @MainActor () -> Void) -> Void
@@ -80,7 +80,8 @@ struct LibraryView: View {
                             pasteOnSingleClick: settings.pasteOnSingleClick,
                             paste: { pasteAndClose(item) },
                             preview: { preview(item) },
-                            toggleFavorite: { model.toggleFavorite(item) }
+                            toggleFavorite: { model.toggleFavorite(item) },
+                            loadPreview: { await model.previewImage(id: $0) }
                         )
                             .contextMenu {
                                 Button("Paste") { pasteAndClose(item) }
@@ -114,7 +115,7 @@ struct LibraryView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .navigationTitle("Nabira Clipboard")
         }
-        .onAppear { model.limit = 5_000; model.reload() }
+        .onAppear { model.limit = AppSettings.maxItems + AppSettings.maxPinnedItems; model.reload() }
         .alert("Favorites limit reached", isPresented: Binding(
             get: { model.favoritesLimitMessage != nil },
             set: { if !$0 { model.favoritesLimitMessage = nil } }

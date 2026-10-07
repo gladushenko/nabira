@@ -1,12 +1,10 @@
 import AppKit
 import SwiftUI
 
-@MainActor private final class ClipboardRowState: ObservableObject {
-    @Published var isHovering = false
-}
-
 struct SourceIcon: View {
     let item: ClipboardItem
+    let loadPreview: (UUID) async -> Data?
+    @State private var imagePreview: NSImage?
     private let containerSize: CGFloat = 70
     private let cornerRadius: CGFloat = 6
 
@@ -38,11 +36,12 @@ struct SourceIcon: View {
         .frame(width: containerSize, height: containerSize)
         .fixedSize()
         .clipped()
-    }
-
-    private var imagePreview: NSImage? {
-        guard item.contentType == .image else { return nil }
-        return item.representations.lazy.compactMap { NSImage(data: $0.data) }.first
+        .task(id: item.id) {
+            imagePreview = nil
+            guard item.contentType == .image,
+                  let data = await loadPreview(item.id), !Task.isCancelled else { return }
+            imagePreview = NSImage(data: data)
+        }
     }
 
     private var iconName: String {
@@ -65,7 +64,8 @@ struct ClipboardRow: View {
     let paste: () -> Void
     let preview: () -> Void
     let toggleFavorite: () -> Void
-    @StateObject private var state = ClipboardRowState()
+    let loadPreview: (UUID) async -> Data?
+    @State private var isHovering = false
     private let contentHeight: CGFloat = 94
     private let metadataRowHeight: CGFloat = 10
     private let actionButtonSize: CGFloat = 10
@@ -73,7 +73,7 @@ struct ClipboardRow: View {
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             if showPreview {
-                SourceIcon(item: item)
+                SourceIcon(item: item, loadPreview: loadPreview)
                     .contentShape(Rectangle())
                     .onTapGesture(count: pasteOnSingleClick ? 1 : 2, perform: paste)
             }
@@ -112,19 +112,19 @@ struct ClipboardRow: View {
         .contentShape(Rectangle())
         .background {
             RoundedRectangle(cornerRadius: 8)
-                .fill(isLastCopied ? Color.accentColor.opacity(0.20) : state.isHovering ? Color.accentColor.opacity(0.12) : Color.clear)
+                .fill(isLastCopied ? Color.accentColor.opacity(0.20) : isHovering ? Color.accentColor.opacity(0.12) : Color.clear)
         }
         .accessibilityValue(isLastCopied ? "Last copied item" : "")
-        .onHover { state.isHovering = $0 }
-        .animation(.easeOut(duration: 0.12), value: state.isHovering)
+        .onHover { isHovering = $0 }
+        .animation(.easeOut(duration: 0.12), value: isHovering)
     }
 
     private var actionButtons: some View {
         HStack(spacing: 16) {
             actionButton(title: "Preview", systemImage: "eye", action: preview)
-                .opacity(state.isHovering ? 1 : 0)
-                .allowsHitTesting(state.isHovering)
-                .accessibilityHidden(!state.isHovering)
+                .opacity(isHovering ? 1 : 0)
+                .allowsHitTesting(isHovering)
+                .accessibilityHidden(!isHovering)
 
             if item.contentType.canBePinned {
                 actionButton(
@@ -132,21 +132,16 @@ struct ClipboardRow: View {
                     systemImage: item.isPinned ? "star.fill" : "star",
                     action: toggleFavorite
                 )
-                .opacity(item.isPinned || state.isHovering ? 1 : 0)
-                .allowsHitTesting(item.isPinned || state.isHovering)
-                .accessibilityHidden(!item.isPinned && !state.isHovering)
+                .opacity(item.isPinned || isHovering ? 1 : 0)
+                .allowsHitTesting(item.isPinned || isHovering)
+                .accessibilityHidden(!item.isPinned && !isHovering)
             }
         }
-        .animation(.easeInOut(duration: 0.05), value: state.isHovering)
+        .animation(.easeInOut(duration: 0.05), value: isHovering)
     }
 
     private var metadataContent: some View {
-        ForEach(Array(metadataDescriptions.enumerated()), id: \.offset) { index, description in
-            if index > 0 {
-                Text("•")
-            }
-            Text(description)
-        }
+        Text(metadataDescriptions.joined(separator: " • "))
     }
 
     private var metadataDescriptions: [String] {

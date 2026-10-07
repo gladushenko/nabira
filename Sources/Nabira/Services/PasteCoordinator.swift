@@ -3,50 +3,85 @@ import ApplicationServices
 import Foundation
 
 @MainActor
-final class PasteCoordinator: TextInserting {
+final class PasteCoordinator {
     private let pasteboard: NSPasteboard
     private weak var monitor: ClipboardMonitor?
-    private var targetApplication: NSRunningApplication?
+    private var targetProcessID: pid_t?
+    private var pasteGeneration = 0
+    private let frontmostProcessID: () -> pid_t?
+    private let isAccessibilityTrusted: () -> Bool
+    private let sendPasteCommand: () -> Bool
+    private let waitForPaste: () async throws -> Void
     var onNotice: ((String) -> Void)?
     var onCopied: ((UUID) -> Void)?
 
-    init(pasteboard: NSPasteboard = .general, monitor: ClipboardMonitor) {
+    init(
+        pasteboard: NSPasteboard = .general,
+        monitor: ClipboardMonitor,
+        frontmostProcessID: @escaping () -> pid_t? = { NSWorkspace.shared.frontmostApplication?.processIdentifier },
+        isAccessibilityTrusted: @escaping () -> Bool = { AXIsProcessTrusted() },
+        sendPasteCommand: @escaping () -> Bool = { PasteCoordinator.postCommandV() },
+        waitForPaste: @escaping () async throws -> Void = { try await Task.sleep(for: .milliseconds(50)) }
+    ) {
         self.pasteboard = pasteboard
         self.monitor = monitor
+        self.frontmostProcessID = frontmostProcessID
+        self.isAccessibilityTrusted = isAccessibilityTrusted
+        self.sendPasteCommand = sendPasteCommand
+        self.waitForPaste = waitForPaste
     }
 
     func captureTarget() {
-        guard let application = NSWorkspace.shared.frontmostApplication,
-              application.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return }
-        targetApplication = application
+        guard let processID = frontmostProcessID(),
+            processID != ProcessInfo.processInfo.processIdentifier
+        else { return }
+        targetProcessID = processID
     }
 
     func paste(_ item: ClipboardItem, asPlainText: Bool) async -> PasteResult {
-        pasteboard.clearContents()
+        guard !Task.isCancelled else { return .failed("Paste cancelled") }
+        pasteGeneration += 1
+        let generation = pasteGeneration
+        let output: [NSPasteboardItem]
         if asPlainText {
             guard let text = item.plainText else { return .failed("No text representation") }
-            pasteboard.setString(text, forType: .string)
+            let textItem = NSPasteboardItem()
+            guard textItem.setString(text, forType: .string) else { return .failed("Could not prepare text") }
+            output = [textItem]
         } else {
-            let output = NSPasteboardItem()
-            for representation in item.representations {
-                output.setData(representation.data, forType: .init(representation.type))
+            let groups = Dictionary(grouping: item.representations) { $0.itemIndex ?? 0 }
+            guard !groups.isEmpty else { return .failed("No pasteable content") }
+            output = groups.keys.sorted().map { index in
+                let output = NSPasteboardItem()
+                for representation in groups[index] ?? [] {
+                    output.setData(representation.data, forType: .init(representation.type))
+                }
+                return output
             }
-            guard pasteboard.writeObjects([output]) else { return .failed("Could not write pasteboard") }
         }
+        pasteboard.clearContents()
+        guard pasteboard.writeObjects(output) else { return .failed("Could not write pasteboard") }
         monitor?.ignore(changeCount: pasteboard.changeCount)
         onCopied?(item.id)
 
-        guard AXIsProcessTrusted() else {
+        guard isAccessibilityTrusted() else {
             onNotice?("Copied. Enable Accessibility in System Settings for direct paste.")
             return .copiedPermissionNeeded
         }
-        guard let target = targetApplication else { return .failed("No target application") }
-        guard NSWorkspace.shared.frontmostApplication?.processIdentifier == target.processIdentifier else {
+        guard let target = targetProcessID else { return .failed("No target application") }
+        guard frontmostProcessID() == target else {
             return .failed("The previous application is no longer active")
         }
-        try? await Task.sleep(for: .milliseconds(50))
+        do {
+            try await waitForPaste()
+            try Task.checkCancellation()
+        } catch { return .failed("Paste cancelled") }
+        guard frontmostProcessID() == target else {
+            return .failed("The previous application is no longer active")
+        }
 
-        guard postCommandV() else {
+        guard generation == pasteGeneration else { return .failed("Paste superseded") }
+        guard sendPasteCommand() else {
             return .failed("Could not send paste command")
         }
         return .inserted
@@ -62,10 +97,11 @@ final class PasteCoordinator: TextInserting {
         }
     }
 
-    private func postCommandV() -> Bool {
+    private static func postCommandV() -> Bool {
         guard let source = CGEventSource(stateID: .combinedSessionState),
-              let down = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: true),
-              let up = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: false) else { return false }
+            let down = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: true),
+            let up = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: false)
+        else { return false }
         source.setLocalEventsFilterDuringSuppressionState(
             [.permitLocalMouseEvents, .permitSystemDefinedEvents],
             state: .eventSuppressionStateSuppressionInterval
