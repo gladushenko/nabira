@@ -1,18 +1,13 @@
-import SwiftUI
+import AppKit
 
 @main
-struct NabiraApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
-
-    var body: some Scene {
-        Settings {
-            if let services = delegate.services { SettingsView(settings: services.settings, model: services.libraryModel) }
-        }
-        .commands {
-            CommandGroup(replacing: .appSettings) {
-                Button("Nabira Settings…") { delegate.openSettings() }
-                    .keyboardShortcut(",", modifiers: .command)
-            }
-        }
+enum NabiraApp {
+    @MainActor
+    static func main() {
+        let application = NSApplication.shared
+        let delegate = AppDelegate()
+        application.delegate = delegate
+        // WindowCoordinator owns all windows; a SwiftUI Settings scene would create a second one.
+        withExtendedLifetime(delegate) { application.run() }
     }
 }

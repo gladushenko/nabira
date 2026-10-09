@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var windows: WindowCoordinator?
     private var menuBar: MenuBarController?
     @ObservationIgnored private var startupTask: Task<Void, Never>?
+    @ObservationIgnored private var pendingSettingsPresentation = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(AppSettings.shared.showInDock ? .regular : .accessory)
@@ -46,7 +47,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 }
                 registerClipboardHistoryShortcut(services.settings.clipboardHistoryShortcut)
-                if !UserDefaults.standard.bool(forKey: "completedOnboarding") { windows.showOnboarding() }
+                let completedOnboarding = UserDefaults.standard.bool(forKey: "completedOnboarding")
+                if !completedOnboarding { windows.showOnboarding() }
+                if pendingSettingsPresentation || (completedOnboarding && services.settings.showInDock) {
+                    pendingSettingsPresentation = false
+                    windows.openSettings()
+                }
             } catch is CancellationError {
                 return
             } catch {
@@ -61,6 +67,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         windows?.applicationDidBecomeActive()
     }
 
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        guard AppSettings.shared.showInDock else { return true }
+        openSettings()
+        return false
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         startupTask?.cancel()
         windows?.stop()
@@ -68,7 +80,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         services?.shortcuts.unregisterAll()
     }
 
-    func openSettings() { windows?.openSettings() }
+    func openSettings() {
+        if let windows {
+            windows.openSettings()
+        } else {
+            pendingSettingsPresentation = true
+        }
+    }
 
     private func registerClipboardHistoryShortcut(_ shortcut: GlobalShortcut) {
         services?.shortcuts.register(id: 1, keyCode: shortcut.keyCode, modifiers: shortcut.modifiers) {

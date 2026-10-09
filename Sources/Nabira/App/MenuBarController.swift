@@ -54,6 +54,41 @@ final class MenuBarController: NSObject {
     }
 
     func configure() {
+        let mainMenu = NSMenu()
+        let applicationItem = NSMenuItem()
+        let applicationMenu = NSMenu(title: "Nabira")
+        applicationMenu.addItem(item("Nabira Settings…", action: #selector(openSettings), key: ","))
+        applicationMenu.addItem(.separator())
+        applicationMenu.addItem(item("Hide Nabira", action: #selector(NSApplication.hide(_:)), key: "h"))
+        applicationMenu.items.last?.target = NSApp
+        applicationMenu.addItem(.separator())
+        applicationMenu.addItem(item("Quit Nabira", action: #selector(quitNabira), key: "q"))
+        applicationItem.submenu = applicationMenu
+        mainMenu.addItem(applicationItem)
+
+        let editItem = NSMenuItem()
+        let editMenu = NSMenu(title: "Edit")
+        for (title, action, key) in [
+            ("Undo", "undo:", "z"), ("Redo", "redo:", "Z"),
+            ("Cut", "cut:", "x"), ("Copy", "copy:", "c"),
+            ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a"),
+        ] {
+            editMenu.addItem(NSMenuItem(title: title, action: Selector(action), keyEquivalent: key))
+        }
+        editItem.submenu = editMenu
+        mainMenu.addItem(editItem)
+
+        let windowItem = NSMenuItem()
+        let windowMenu = NSMenu(title: "Window")
+        windowMenu.addItem(NSMenuItem(
+            title: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"))
+        windowMenu.addItem(NSMenuItem(
+            title: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m"))
+        windowItem.submenu = windowMenu
+        mainMenu.addItem(windowItem)
+        NSApp.windowsMenu = windowMenu
+        NSApp.mainMenu = mainMenu
+
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let url = Bundle.module.url(forResource: "MenuBarIcon", withExtension: "png"),
             let image = NSImage(contentsOf: url)
