@@ -6,7 +6,8 @@ ROOT="${0:A:h:h}"
 "$ROOT/scripts/build-app.sh" release
 
 APP="$ROOT/dist/Nabira.app"
-DMG="$ROOT/dist/Nabira-1.0.0.dmg"
+NABIRA_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
+DMG="$ROOT/dist/Nabira-$NABIRA_VERSION.dmg"
 codesign --verify --deep --strict --verbose=2 "$APP"
 rm -f "$DMG"
 hdiutil create -volname Nabira -srcfolder "$APP" -ov -format UDZO "$DMG"

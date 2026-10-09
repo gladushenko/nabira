@@ -10,9 +10,7 @@ final class AppServices {
     let shortcuts = GlobalShortcutManager()
 
     init() async throws {
-        let support = try FileManager.default.url(
-            for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true
-        ).appending(path: "Nabira")
+        let support = try AppInfo.dataDirectory()
         repository = try await SQLiteClipboardRepository(path: support.appending(path: "history.sqlite3").path)
         monitor = ClipboardMonitor(repository: repository, privacy: PrivacyGuard(), settings: settings)
         pasteCoordinator = PasteCoordinator(monitor: monitor)

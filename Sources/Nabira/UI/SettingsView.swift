@@ -13,6 +13,7 @@ private enum SettingsModule: String, CaseIterable, Identifiable {
     case clipboard = "Clipboard"
     case shortcuts = "Shortcuts"
     case permissions = "Permissions"
+    case about = "About"
 
     var id: Self { self }
 
@@ -22,6 +23,7 @@ private enum SettingsModule: String, CaseIterable, Identifiable {
         case .clipboard: "clipboard"
         case .shortcuts: "keyboard"
         case .permissions: "lock.shield"
+        case .about: "info.circle"
         }
     }
 
@@ -320,6 +322,9 @@ struct SettingsView: View {
 
                 restoreDefaultsButton(target: .shortcuts)
             }
+
+        case .about:
+            AboutView()
 
         case .permissions:
             Form {

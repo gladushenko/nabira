@@ -5,6 +5,17 @@ ROOT="${0:A:h:h}"
 CONFIGURATION="${1:-release}"
 SCRATCH="${NABIRA_BUILD_DIR:-/tmp/nabira-spm-build}"
 
+NABIRA_VERSION="$(<"$ROOT/VERSION")"
+NABIRA_BUILD_NUMBER="${NABIRA_BUILD_NUMBER:-1}"
+if [[ ! "$NABIRA_VERSION" =~ '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' ]]; then
+    print -u2 'VERSION must contain a numeric version such as 0.1.0.'
+    exit 1
+fi
+if [[ ! "$NABIRA_BUILD_NUMBER" =~ '^[1-9][0-9]*$' ]]; then
+    print -u2 'NABIRA_BUILD_NUMBER must be a positive integer.'
+    exit 1
+fi
+
 # SwiftUI macros in recent SDKs require the platform plugins shipped with Xcode.
 # Choose tools for this process without changing the system's xcode-select setting.
 if [[ -z "${DEVELOPER_DIR:-}" ]]; then
@@ -49,8 +60,8 @@ iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string Nabira" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string APPL" "$APP/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string 1.0.0" "$APP/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c "Add :CFBundleVersion string 1" "$APP/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $NABIRA_VERSION" "$APP/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $NABIRA_BUILD_NUMBER" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :LSMinimumSystemVersion string 14.0" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :NSHumanReadableCopyright string 'Copyright © 2026 Nabira'" "$APP/Contents/Info.plist"
