@@ -28,6 +28,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 )
                 self.menuBar = menuBar
                 menuBar.configure()
+                services.settings.onLanguageChange = { [weak windows, weak menuBar] in
+                    windows?.updateLocalizedTitles()
+                    menuBar?.configure()
+                }
                 if services.settings.isClipboardEnabled { services.monitor.start() }
                 services.settings.onClipboardEnabledChange = { [weak monitor = services.monitor] enabled in
                     if enabled { monitor?.start() } else { monitor?.stop() }

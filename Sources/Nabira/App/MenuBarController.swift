@@ -3,6 +3,7 @@ import Carbon
 import SwiftUI
 
 private struct ClipboardMenuToggleView: View {
+    @Environment(\.appLocalization) private var localized
     @Bindable var settings: AppSettings
 
     var body: some View {
@@ -10,8 +11,9 @@ private struct ClipboardMenuToggleView: View {
             settings.isClipboardEnabled.toggle()
         } label: {
             HStack(spacing: 8) {
-                Text("Enable Clipboard")
+                Text(localized("Enable Clipboard"))
                     .foregroundStyle(.primary)
+                    .fixedSize(horizontal: true, vertical: false)
                 Spacer()
                 ZStack(alignment: settings.isClipboardEnabled ? .trailing : .leading) {
                     Capsule()
@@ -53,6 +55,8 @@ final class MenuBarController: NSObject {
         super.init()
     }
 
+    private var localized: AppLocalization { AppLocalization(language: settings.language) }
+
     func configure() {
         let mainMenu = NSMenu()
         let applicationItem = NSMenuItem()
@@ -67,29 +71,31 @@ final class MenuBarController: NSObject {
         mainMenu.addItem(applicationItem)
 
         let editItem = NSMenuItem()
-        let editMenu = NSMenu(title: "Edit")
+        let editMenu = NSMenu(title: localized("Edit"))
         for (title, action, key) in [
             ("Undo", "undo:", "z"), ("Redo", "redo:", "Z"),
             ("Cut", "cut:", "x"), ("Copy", "copy:", "c"),
             ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a"),
         ] {
-            editMenu.addItem(NSMenuItem(title: title, action: Selector(action), keyEquivalent: key))
+            editMenu.addItem(NSMenuItem(title: localized.key(title), action: Selector(action), keyEquivalent: key))
         }
         editItem.submenu = editMenu
         mainMenu.addItem(editItem)
 
         let windowItem = NSMenuItem()
-        let windowMenu = NSMenu(title: "Window")
+        let windowMenu = NSMenu(title: localized("Window"))
         windowMenu.addItem(NSMenuItem(
-            title: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"))
+            title: localized("Close"), action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"))
         windowMenu.addItem(NSMenuItem(
-            title: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m"))
+            title: localized("Minimize"), action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m"))
         windowItem.submenu = windowMenu
         mainMenu.addItem(windowItem)
         NSApp.windowsMenu = windowMenu
         NSApp.mainMenu = mainMenu
 
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        if statusItem == nil {
+            statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        }
         if let url = Bundle.module.url(forResource: "MenuBarIcon", withExtension: "png"),
             let image = NSImage(contentsOf: url)
         {
@@ -109,7 +115,9 @@ final class MenuBarController: NSObject {
         menu.addItem(.separator())
         menu.addItem(item("Quit Nabira", action: #selector(quitNabira), key: "q"))
         menu.update()
-        menu.insertItem(makeClipboardEnabledMenuItem(width: menu.size.width, settings: settings), at: 2)
+        let toggleItem = makeClipboardEnabledMenuItem(width: menu.size.width, settings: settings)
+        menu.minimumWidth = toggleItem.view?.frame.width ?? 280
+        menu.insertItem(toggleItem, at: 2)
         statusItem?.menu = menu
     }
 
@@ -131,8 +139,10 @@ final class MenuBarController: NSObject {
 
     private func makeClipboardEnabledMenuItem(width: CGFloat, settings: AppSettings) -> NSMenuItem {
         let menuItem = NSMenuItem()
-        let view = NSHostingView(rootView: ClipboardMenuToggleView(settings: settings))
-        view.frame = NSRect(x: 0, y: 0, width: width, height: 28)
+        let view = NSHostingView(rootView: LocalizedContent(
+            settings: settings, content: ClipboardMenuToggleView(settings: settings)))
+        let menuWidth = max(280, width, view.fittingSize.width)
+        view.frame = NSRect(x: 0, y: 0, width: menuWidth, height: 28)
         menuItem.view = view
         return menuItem
     }
@@ -155,7 +165,7 @@ final class MenuBarController: NSObject {
     private func item(
         _ title: String, action: Selector, key: String = "", modifiers: NSEvent.ModifierFlags = [.command]
     ) -> NSMenuItem {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+        let item = NSMenuItem(title: localized.key(title), action: action, keyEquivalent: key)
         item.target = self
         item.keyEquivalentModifierMask = modifiers
         return item

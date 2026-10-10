@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 struct ClipboardPreviewView: View {
+    @Environment(\.appLocalization) private var localized
     let item: ClipboardItem
 
     var body: some View {
@@ -11,7 +12,7 @@ struct ClipboardPreviewView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .accessibilityLabel("Clipboard image preview")
+                    .accessibilityLabel(localized("Clipboard image preview"))
             } else {
                 ScrollView {
                     Text(textContent)

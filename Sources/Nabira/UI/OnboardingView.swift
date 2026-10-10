@@ -2,6 +2,7 @@ import ServiceManagement
 import SwiftUI
 
 struct OnboardingView: View {
+    @Environment(\.appLocalization) private var localized
     @Bindable var settings: AppSettings
     let pasteCoordinator: PasteCoordinator
     let finish: () -> Void
@@ -12,14 +13,14 @@ struct OnboardingView: View {
     var body: some View {
         VStack(spacing: 24) {
             Image(systemName: symbol).font(.system(size: 50)).foregroundStyle(.tint)
-            Text(title).font(.largeTitle.bold())
-            Text(message).font(.title3).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 440)
+            Text(localized.key(title)).font(.largeTitle.bold())
+            Text(localized.key(message)).font(.title3).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 440)
             stepControl
             Spacer()
             HStack {
-                if step > 0 { Button("Back") { step -= 1 } }
+                if step > 0 { Button(localized("Back")) { step -= 1 } }
                 Spacer()
-                Button(step == 4 ? "Start Using Nabira" : "Continue") {
+                Button(localized.key(step == 4 ? "Start Using Nabira" : "Continue")) {
                     if step == 4 { finish() } else { step += 1 }
                 }.keyboardShortcut(.defaultAction)
             }
@@ -31,12 +32,12 @@ struct OnboardingView: View {
     @ViewBuilder private var stepControl: some View {
         switch step {
         case 1:
-            Toggle("Launch Nabira at login", isOn: $launchAtLogin)
+            Toggle(localized("Launch Nabira at login"), isOn: $launchAtLogin)
                 .onChange(of: launchAtLogin) { _, enabled in try? enabled ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister() }
         case 2:
             Text("⌘B").font(.system(size: 34, weight: .semibold, design: .rounded)).padding(12).background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
         case 3:
-            Toggle("Enable Direct Paste", isOn: $directPaste)
+            Toggle(localized("Enable Direct Paste"), isOn: $directPaste)
                 .onChange(of: directPaste) { _, enabled in if enabled { pasteCoordinator.requestAccessibility() } }
         default: EmptyView()
         }

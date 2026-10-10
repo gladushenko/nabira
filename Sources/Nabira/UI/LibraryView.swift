@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 struct LibraryView: View {
+    @Environment(\.appLocalization) private var localized
     @Bindable var model: HistoryViewModel
     @Bindable var settings: AppSettings
     let openSettings: () -> Void
@@ -18,7 +19,7 @@ struct LibraryView: View {
                 HStack(spacing: 12) {
                     HStack {
                         Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                        TextField("Search", text: $model.query).textFieldStyle(.plain)
+                        TextField(localized("Search"), text: $model.query).textFieldStyle(.plain)
                     }
                     .padding(.horizontal, 8)
                     .frame(height: controlHeight)
@@ -32,8 +33,8 @@ struct LibraryView: View {
                             .contentShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .help("Settings")
-                    .accessibilityLabel("Settings")
+                    .help(localized("Settings"))
+                    .accessibilityLabel(localized("Settings"))
                 }
                 .padding(.horizontal, controlHorizontalPadding)
                 .padding(.top, controlVerticalSpacing)
@@ -44,7 +45,7 @@ struct LibraryView: View {
                         Button {
                             model.filter = filter
                         } label: {
-                            Label(filter.rawValue, systemImage: icon(for: filter))
+                            Label(localized.key(filter.rawValue), systemImage: icon(for: filter))
                                 .font(.body)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                                 .contentShape(Rectangle())
@@ -84,45 +85,45 @@ struct LibraryView: View {
                             loadPreview: { await model.previewImage(id: $0) }
                         )
                             .contextMenu {
-                                Button("Paste") { pasteAndClose(item) }
+                                Button(localized("Paste")) { pasteAndClose(item) }
                                 if item.plainText != nil {
-                                    Button("Paste as Plain Text") { pasteAndClose(item, plain: true) }
+                                    Button(localized("Paste as Plain Text")) { pasteAndClose(item, plain: true) }
                                 }
-                                Button("Preview") { preview(item) }
+                                Button(localized("Preview")) { preview(item) }
                                 if item.contentType.canBePinned {
-                                    Button(item.isPinned ? "Remove from Favorites" : "Add to Favorites") {
+                                    Button(localized.key(item.isPinned ? "Remove from Favorites" : "Add to Favorites")) {
                                         model.toggleFavorite(item)
                                     }
                                 }
                                 if item.plainText != nil {
-                                    Menu("Transform and Paste") {
+                                    Menu(localized("Transform and Paste")) {
                                         ForEach(TextTransformation.allCases) { transformation in
                                             Button {
                                                 transformPasteAndClose(item, using: transformation)
                                             } label: {
-                                                Text(transformation.rawValue)
-                                                Text(transformation.example)
+                                                Text(localized.key(transformation.rawValue))
+                                                Text(localized.key(transformation.example))
                                             }
                                         }
                                     }
                                 }
                                 Divider()
-                                Button("Delete", role: .destructive) { model.delete(item) }
+                                Button(localized("Delete"), role: .destructive) { model.delete(item) }
                             }
                     }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .navigationTitle("Nabira Clipboard")
+            .navigationTitle(localized("Nabira Clipboard"))
         }
         .onAppear { model.limit = AppSettings.maxItems + AppSettings.maxPinnedItems; model.reload() }
-        .alert("Favorites limit reached", isPresented: Binding(
+        .alert(localized("Favorites limit reached"), isPresented: Binding(
             get: { model.favoritesLimitMessage != nil },
             set: { if !$0 { model.favoritesLimitMessage = nil } }
         )) {
-            Button("OK") { model.favoritesLimitMessage = nil }
+            Button(localized("OK")) { model.favoritesLimitMessage = nil }
         } message: {
-            Text(model.favoritesLimitMessage ?? "")
+            Text(localized("You can add up to \(AppSettings.maxPinnedItems) items to Favorites."))
         }
     }
 

@@ -56,6 +56,14 @@ final class AppSettings {
     @ObservationIgnored var onClipboardHistoryShortcutChange: ((GlobalShortcut) -> Void)?
     @ObservationIgnored var onClipboardHistoryShortcutRecordingChange: ((Bool) -> Void)?
     @ObservationIgnored var onClipboardEnabledChange: ((Bool) -> Void)?
+    @ObservationIgnored var onLanguageChange: (() -> Void)?
+
+    var language: AppLanguage {
+        didSet {
+            defaults.set(language.rawValue, forKey: "language")
+            onLanguageChange?()
+        }
+    }
 
     @ObservationIgnored var onRetentionDaysChange: (() -> Void)?
     var retentionDays: Int {
@@ -93,6 +101,7 @@ final class AppSettings {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        language = AppLanguage(rawValue: defaults.string(forKey: "language") ?? "") ?? .system
         let storedDescriptionOptions = defaults.stringArray(forKey: "clipboardDescriptionOptions")
         let storedShowAllDescriptions = defaults.object(forKey: "showAllClipboardDescriptions") as? Bool
         let legacyDescriptionMode = defaults.string(forKey: "clipboardDescriptionMode")

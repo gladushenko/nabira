@@ -85,6 +85,14 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
         windowAwaitingActivation = nil
     }
 
+    func updateLocalizedTitles() {
+        let localized = AppLocalization(language: services.settings.language)
+        settingsWindow?.title = localized("Nabira Settings")
+        libraryWindow?.title = localized("Clipboard History")
+        previewWindow?.title = localized("Preview")
+        onboardingWindow?.title = localized("Welcome to Nabira")
+    }
+
     func stop() {
         previewTask?.cancel()
         stopOutsideClickMonitor()
@@ -105,7 +113,7 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
                 backing: .buffered,
                 defer: false
             )
-            window.title = "Clipboard History"
+            window.title = AppLocalization(language: services.settings.language)("Clipboard History")
             window.isReleasedWhenClosed = false
             window.isFloatingPanel = true
             window.hidesOnDeactivate = false
@@ -119,7 +127,7 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
                 self?.hidePreviewForLibraryDismissal()
             }
             window.contentView = NSHostingView(
-                rootView: LibraryView(
+                rootView: LocalizedContent(settings: services.settings, content: LibraryView(
                     model: services.libraryModel,
                     settings: services.settings,
                     openSettings: { [weak self, weak window] in
@@ -134,7 +142,7 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
                         }
                         window.dismissImmediately(completion: completion)
                     }
-                ))
+                )))
             libraryWindow = window
             libraryWindow?.delegate = self
             libraryWindow?.contentMinSize = NSSize(width: 600, height: 360)
@@ -186,7 +194,7 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
             window.delegate = self
             previewWindow = window
         } else {
-            previewWindow?.contentView = NSHostingView(rootView: rootView)
+            previewWindow?.contentView = NSHostingView(rootView: LocalizedContent(settings: services.settings, content: rootView))
         }
         center(previewWindow)
         if let libraryWindow, let previewWindow,
@@ -301,12 +309,13 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
     }
 
     func confirmClearHistory() {
+        let localized = AppLocalization(language: services.settings.language)
         let alert = NSAlert()
-        alert.messageText = "Clear all clipboard history?"
-        alert.informativeText = "All items, including Favorites, will be permanently deleted."
+        alert.messageText = localized("Clear all clipboard history?")
+        alert.informativeText = localized("All items, including Favorites, will be permanently deleted.")
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Clear All")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: localized("Clear All"))
+        alert.addButton(withTitle: localized("Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         services.libraryModel.clearAll()
     }
@@ -324,10 +333,10 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-        window.title = title
+        window.title = AppLocalization(language: services.settings.language).key(title)
         window.isReleasedWhenClosed = false
         window.center()
-        window.contentView = NSHostingView(rootView: rootView)
+        window.contentView = NSHostingView(rootView: LocalizedContent(settings: services.settings, content: rootView))
         return window
     }
 

@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 struct AboutView: View {
+    @Environment(\.appLocalization) private var localized
     private let info = AppInfo()
     private let repositoryURL = URL(string: "https://github.com/gladushenko/nabira")!
 
@@ -17,9 +18,9 @@ struct AboutView: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Nabira")
                             .font(.title.bold())
-                        Text("Everyday tools for your Mac.")
+                        Text(localized("Everyday tools for your Mac."))
                             .foregroundStyle(.secondary)
-                        Text("Version \(info.version)")
+                        Text(localized("Version \(info.version)"))
                             .font(.callout.monospacedDigit())
                             .foregroundStyle(.secondary)
                             .textSelection(.enabled)
@@ -28,20 +29,20 @@ struct AboutView: View {
                 .padding(.vertical, 4)
             }
 
-            Section("Project") {
-                Link("Source Code", destination: repositoryURL)
+            Section(localized("Project")) {
+                Link(localized("Source Code"), destination: repositoryURL)
             }
 
-            Section("Local Data") {
-                LabeledContent("Application data") {
-                    Button("Open Folder") {
+            Section(localized("Local Data")) {
+                LabeledContent(localized("Application data")) {
+                    Button(localized("Open Folder")) {
                         if let directory = try? AppInfo.dataDirectory() {
                             try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
                             NSWorkspace.shared.open(directory)
                         }
                     }
                 }
-                Text("Clipboard history is stored locally on this Mac.")
+                Text(localized("Clipboard history is stored locally on this Mac."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

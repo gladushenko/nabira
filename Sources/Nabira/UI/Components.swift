@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 struct SourceIcon: View {
+    @Environment(\.appLocalization) private var localized
     let item: ClipboardItem
     let loadPreview: (UUID) async -> Data?
     @State private var imagePreview: NSImage?
@@ -18,19 +19,19 @@ struct SourceIcon: View {
                     .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
                     .overlay { RoundedRectangle(cornerRadius: cornerRadius).stroke(.separator, lineWidth: 1) }
-                    .accessibilityLabel("Image preview")
+                    .accessibilityLabel(localized("Image preview"))
             } else if let bundleID = item.sourceBundleID, let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
                 Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
                     .resizable()
                     .scaledToFit()
                     .padding(3)
-                    .accessibilityLabel(item.sourceAppName ?? "Unknown application")
+                    .accessibilityLabel(item.sourceAppName ?? localized("Unknown application"))
             } else {
                 Image(systemName: iconName)
                     .resizable()
                     .scaledToFit()
                     .padding(3)
-                    .accessibilityLabel(item.sourceAppName ?? "Unknown application")
+                    .accessibilityLabel(item.sourceAppName ?? localized("Unknown application"))
             }
         }
         .frame(width: containerSize, height: containerSize)
@@ -56,6 +57,7 @@ struct SourceIcon: View {
 }
 
 struct ClipboardRow: View {
+    @Environment(\.appLocalization) private var localized
     let item: ClipboardItem
     var isLastCopied = false
     let showPreview: Bool
@@ -114,7 +116,7 @@ struct ClipboardRow: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(isLastCopied ? Color.accentColor.opacity(0.20) : isHovering ? Color.accentColor.opacity(0.12) : Color.clear)
         }
-        .accessibilityValue(isLastCopied ? "Last copied item" : "")
+        .accessibilityValue(isLastCopied ? localized("Last copied item") : "")
         .onHover { isHovering = $0 }
         .animation(.easeOut(duration: 0.12), value: isHovering)
     }
@@ -147,10 +149,10 @@ struct ClipboardRow: View {
     private var metadataDescriptions: [String] {
         var descriptions: [String] = []
         if descriptionOptions.contains(.contentType) {
-            descriptions.append(item.contentType.label)
+            descriptions.append(localized.key(item.contentType.label))
         }
         if descriptionOptions.contains(.characterCount), let count = item.characterCount {
-            descriptions.append("\(count) \(count == 1 ? "char" : "chars")")
+            descriptions.append(localized("\(count) chars"))
         }
         if descriptionOptions.contains(.time) {
             descriptions.append(relativeAge)
@@ -160,16 +162,17 @@ struct ClipboardRow: View {
 
     private func actionButton(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Label(title, systemImage: systemImage)
+            Label(localized.key(title), systemImage: systemImage)
                 .labelStyle(.iconOnly)
                 .font(.system(size: 12))
                 .frame(width: actionButtonSize, height: actionButtonSize)
         }
         .buttonStyle(.borderless)
-        .help(title)
+        .help(localized.key(title))
     }
 
     private var displayedContent: String {
+        if item.contentType == .image, item.title == "Image" { return localized("Image") }
         guard item.contentType == .files else { return item.title }
         if item.title.hasPrefix("file://"),
            let url = URL(string: item.searchableText), url.isFileURL { return url.path }
@@ -178,14 +181,15 @@ struct ClipboardRow: View {
 
     private var relativeAge: String {
         let totalMinutes = max(0, Int(Date().timeIntervalSince(item.lastCopiedAt))) / 60
-        if totalMinutes < 1 { return "Less than a minute ago" }
-        if totalMinutes < 60 { return "\(totalMinutes) min ago" }
-        return "\(totalMinutes / 60) h \(totalMinutes % 60) min ago"
+        if totalMinutes < 1 { return localized("Less than a minute ago") }
+        if totalMinutes < 60 { return localized("\(totalMinutes) min ago") }
+        return localized("\(totalMinutes / 60) h \(totalMinutes % 60) min ago")
     }
 }
 
 struct EmptyHistoryView: View {
+    @Environment(\.appLocalization) private var localized
     var body: some View {
-        ContentUnavailableView("Clipboard history is empty", systemImage: "clipboard", description: Text("Copy something in another app and it will appear here."))
+        ContentUnavailableView(localized("Clipboard history is empty"), systemImage: "clipboard", description: Text(localized("Copy something in another app and it will appear here.")))
     }
 }

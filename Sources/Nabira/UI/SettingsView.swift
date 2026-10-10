@@ -148,6 +148,7 @@ private enum SettingsModule: String, CaseIterable, Identifiable {
 }
 
 struct SettingsView: View {
+    @Environment(\.appLocalization) private var localized
     @Bindable var settings: AppSettings
     @Bindable var model: HistoryViewModel
     @State private var state = SettingsLocalState()
@@ -159,20 +160,20 @@ struct SettingsView: View {
                     Image(systemName: module.icon)
                         .font(.system(size: 15))
                         .frame(width: 20)
-                    Text(module.rawValue)
+                    Text(localized.key(module.rawValue))
                 }
                     .tag(module)
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
             .padding(.top, 38)
-            .frame(width: 190)
+            .frame(width: 220)
             .background(SettingsSidebarBackground())
 
             Divider()
 
             VStack(alignment: .leading, spacing: 0) {
-                Text(selectedModule.rawValue)
+                Text(localized.key(selectedModule.rawValue))
                     .font(.title2.weight(.semibold))
                     .padding(.horizontal, 20)
                     .padding(.top, 38)
@@ -193,17 +194,17 @@ struct SettingsView: View {
                 state.selection = .clipboard
             }
         }
-        .alert("Clear all clipboard history?", isPresented: $state.isClearHistoryConfirmationPresented) {
-            Button("Cancel", role: .cancel) {}
-            Button("Clear All", role: .destructive) { model.clearAll() }
+        .alert(localized("Clear all clipboard history?"), isPresented: $state.isClearHistoryConfirmationPresented) {
+            Button(localized("Cancel"), role: .cancel) {}
+            Button(localized("Clear All"), role: .destructive) { model.clearAll() }
         } message: {
-            Text("All items, including Favorites, will be permanently deleted.")
+            Text(localized("All items, including Favorites, will be permanently deleted."))
         }
-        .alert("Restore Defaults?", isPresented: restoreDefaultsConfirmationBinding) {
-            Button("Cancel", role: .cancel) {}
-            Button("OK") { restoreDefaults() }
+        .alert(localized("Restore Defaults?"), isPresented: restoreDefaultsConfirmationBinding) {
+            Button(localized("Cancel"), role: .cancel) {}
+            Button(localized("OK")) { restoreDefaults() }
         } message: {
-            Text(restoreDefaultsMessage)
+            Text(localized.key(restoreDefaultsMessage))
         }
     }
 
@@ -245,12 +246,17 @@ struct SettingsView: View {
         switch selectedModule {
         case .general:
             Form {
-                Toggle("Launch at Login", isOn: $state.launchAtLogin)
+                Toggle(localized("Launch at Login"), isOn: $state.launchAtLogin)
                     .controlSize(.large)
                     .onChange(of: state.launchAtLogin) { _, enabled in updateLaunchAtLogin(enabled) }
-                Toggle("Show in Dock", isOn: $settings.showInDock)
+                Toggle(localized("Show in Dock"), isOn: $settings.showInDock)
                     .controlSize(.large)
-                Picker("Appearance", selection: $settings.appearance) { ForEach(AppAppearance.allCases) { Text($0.rawValue).tag($0) } }
+                Picker(localized("Language"), selection: $settings.language) {
+                    Text(localized("System")).tag(AppLanguage.system)
+                    Text(verbatim: "English").tag(AppLanguage.english)
+                    Text(verbatim: "Русский").tag(AppLanguage.russian)
+                }
+                Picker(localized("Appearance"), selection: $settings.appearance) { ForEach(AppAppearance.allCases) { Text(localized.key($0.rawValue)).tag($0) } }
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
@@ -258,23 +264,23 @@ struct SettingsView: View {
         case .clipboard:
             VStack(spacing: 0) {
                 Form {
-                    Section("History") {
-                        Toggle("Enable Clipboard", isOn: $settings.isClipboardEnabled)
+                    Section(localized("History")) {
+                        Toggle(localized("Enable Clipboard"), isOn: $settings.isClipboardEnabled)
                             .controlSize(.large)
-                        Toggle("Paste on Single Click", isOn: $settings.pasteOnSingleClick)
+                        Toggle(localized("Paste on Single Click"), isOn: $settings.pasteOnSingleClick)
                             .controlSize(.large)
-                        Toggle("Show App Icons", isOn: $settings.showClipboardPreviews)
+                        Toggle(localized("Show App Icons"), isOn: $settings.showClipboardPreviews)
                             .controlSize(.large)
-                        LabeledContent("Content Description") {
+                        LabeledContent(localized("Content Description")) {
                             VStack(alignment: .leading, spacing: 8) {
-                                Toggle("Show All", isOn: Binding(
+                                Toggle(localized("Show All"), isOn: Binding(
                                     get: { settings.showAllClipboardDescriptions },
                                     set: { settings.setShowAllClipboardDescriptions($0) }
                                 ))
                                 .toggleStyle(.checkbox)
 
                                 ForEach(ClipboardDescriptionOption.allCases) { option in
-                                    Toggle(option.rawValue, isOn: Binding(
+                                    Toggle(localized.key(option.rawValue), isOn: Binding(
                                         get: { settings.clipboardDescriptionOptions.contains(option) },
                                         set: { settings.setClipboardDescriptionOption(option, enabled: $0) }
                                     ))
@@ -284,21 +290,21 @@ struct SettingsView: View {
                             }
                             .frame(minWidth: 150, alignment: .leading)
                         }
-                        LabeledContent("Maximum items", value: "\(AppSettings.maxItems)")
-                        LabeledContent("Maximum favorites", value: "\(AppSettings.maxPinnedItems)")
-                        Picker("Retention", selection: $settings.retentionDays) {
-                            Text("1 day").tag(1)
-                            Text("1 week").tag(7)
-                            Text("2 weeks").tag(14)
-                            Text("1 month").tag(30)
-                            Text("2 months").tag(60)
+                        LabeledContent(localized("Maximum items"), value: "\(AppSettings.maxItems)")
+                        LabeledContent(localized("Maximum favorites"), value: "\(AppSettings.maxPinnedItems)")
+                        Picker(localized("Retention"), selection: $settings.retentionDays) {
+                            Text(localized("1 day")).tag(1)
+                            Text(localized("1 week")).tag(7)
+                            Text(localized("2 weeks")).tag(14)
+                            Text(localized("1 month")).tag(30)
+                            Text(localized("2 months")).tag(60)
                         }
-                        Button("Clear Clipboard History…", role: .destructive) {
+                        Button(localized("Clear Clipboard History…"), role: .destructive) {
                             state.isClearHistoryConfirmationPresented = true
                         }
                     }
 
-                    Section("Shortcuts") {
+                    Section(localized("Shortcuts")) {
                         clipboardHistoryShortcutSetting
                     }
                 }
@@ -312,7 +318,7 @@ struct SettingsView: View {
         case .shortcuts:
             VStack(spacing: 0) {
                 Form {
-                    Section("Clipboard") {
+                    Section(localized("Clipboard")) {
                         clipboardHistoryShortcutSetting
                     }
                 }
@@ -328,9 +334,9 @@ struct SettingsView: View {
 
         case .permissions:
             Form {
-                Section("Accessibility") {
-                    Button("Open Permission Settings…") { model.pasteCoordinator.requestAccessibility() }
-                    Text("Accessibility permission lets Nabira paste the selected clipboard item into the previously active application.")
+                Section(localized("Accessibility")) {
+                    Button(localized("Open Permission Settings…")) { model.pasteCoordinator.requestAccessibility() }
+                    Text(localized("Accessibility permission lets Nabira paste the selected clipboard item into the previously active application."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -342,11 +348,11 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var clipboardHistoryShortcutSetting: some View {
-        LabeledContent("Open Clipboard") {
+        LabeledContent(localized("Open Clipboard")) {
             HStack(spacing: 12) {
                 Button(
                     state.isRecordingShortcut
-                        ? state.recordedShortcutDisplay ?? "Press keys…"
+                        ? state.recordedShortcutDisplay ?? localized("Press keys…")
                         : settings.clipboardHistoryShortcut.displayName
                 ) {
                     state.startRecordingShortcut(
@@ -362,11 +368,11 @@ struct SettingsView: View {
                     Image(systemName: "arrow.counterclockwise")
                 }
                 .disabled(settings.clipboardHistoryShortcut == .clipboardHistoryDefault)
-                .help("Reset to default")
+                .help(localized("Reset to default"))
             }
         }
         if let message = state.shortcutValidationMessage {
-            Text(message)
+            Text(localized.key(message))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -375,7 +381,7 @@ struct SettingsView: View {
     private func restoreDefaultsButton(target: SettingsModule) -> some View {
         HStack {
             Spacer()
-            Button("Restore Defaults") {
+            Button(localized("Restore Defaults")) {
                 state.restoreDefaultsTarget = target
             }
                 .buttonStyle(.bordered)
