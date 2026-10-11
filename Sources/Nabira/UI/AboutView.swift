@@ -31,6 +31,8 @@ struct AboutView: View {
 
             Section(localized("Project")) {
                 Link(localized("Source Code"), destination: repositoryURL)
+                Link(localized("Releases"), destination: repositoryURL.appendingPathComponent("releases"))
+                Link(localized("Report an Issue"), destination: repositoryURL.appendingPathComponent("issues/new"))
             }
 
             Section(localized("Local Data")) {

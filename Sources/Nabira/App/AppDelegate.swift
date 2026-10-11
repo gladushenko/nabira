@@ -1,5 +1,6 @@
 import AppKit
 import Observation
+import ServiceManagement
 
 @MainActor
 @Observable
@@ -52,6 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 registerClipboardHistoryShortcut(services.settings.clipboardHistoryShortcut)
                 let completedOnboarding = UserDefaults.standard.bool(forKey: "completedOnboarding")
+                configureDefaultLaunchAtLogin(completedOnboarding: completedOnboarding)
                 if !completedOnboarding { windows.showOnboarding() }
                 if pendingSettingsPresentation || (completedOnboarding && services.settings.showInDock) {
                     pendingSettingsPresentation = false
@@ -89,6 +91,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             windows.openSettings()
         } else {
             pendingSettingsPresentation = true
+        }
+    }
+
+    private func configureDefaultLaunchAtLogin(completedOnboarding: Bool) {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: "didConfigureDefaultLaunchAtLogin") else { return }
+        // Apply once so later launches respect changes made in Nabira or System Settings.
+        defaults.set(true, forKey: "didConfigureDefaultLaunchAtLogin")
+        guard !completedOnboarding, SMAppService.mainApp.status == .notRegistered else { return }
+        do {
+            try SMAppService.mainApp.register()
+        } catch {
+            services?.libraryModel.errorMessage = error.localizedDescription
         }
     }
 

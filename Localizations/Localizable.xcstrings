@@ -1656,6 +1656,23 @@
         }
       }
     },
+    "Releases" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Releases"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Релизы"
+          }
+        }
+      }
+    },
     "Remove from Favorites" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1669,6 +1686,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Убрать из избранного"
+          }
+        }
+      }
+    },
+    "Report an Issue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report an Issue"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщить о проблеме"
           }
         }
       }
@@ -1702,7 +1736,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Восстановить настройки"
+            "value" : "Восстановить по умолчанию"
           }
         }
       }
@@ -2027,6 +2061,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Будут восстановлены настройки по умолчанию."
+          }
+        }
+      }
+    },
+    "This will use the system language and appearance, enable launch at login, and hide Nabira from the Dock." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This will use the system language and appearance, enable launch at login, and hide Nabira from the Dock."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Будут установлены системные язык и тема, включён запуск при входе и скрыт значок Nabira в Dock."
           }
         }
       }

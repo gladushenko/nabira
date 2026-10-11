@@ -233,6 +233,8 @@ struct SettingsView: View {
 
     private var restoreDefaultsMessage: String {
         switch state.restoreDefaultsTarget {
+        case .general:
+            "This will use the system language and appearance, enable launch at login, and hide Nabira from the Dock."
         case .clipboard:
             "This will restore all Clipboard settings to their default values. Your clipboard history will not be deleted."
         case .shortcuts:
@@ -246,21 +248,28 @@ struct SettingsView: View {
     private var settingsDetail: some View {
         switch selectedModule {
         case .general:
-            Form {
-                Toggle(localized("Launch at Login"), isOn: $state.launchAtLogin)
-                    .controlSize(.large)
-                    .onChange(of: state.launchAtLogin) { _, enabled in updateLaunchAtLogin(enabled) }
-                Toggle(localized("Show in Dock"), isOn: $settings.showInDock)
-                    .controlSize(.large)
-                Picker(localized("Language"), selection: $settings.language) {
-                    Text(localized("System")).tag(AppLanguage.system)
-                    Text(verbatim: "English").tag(AppLanguage.english)
-                    Text(verbatim: "Русский").tag(AppLanguage.russian)
+            VStack(spacing: 0) {
+                Form {
+                    Toggle(localized("Launch at Login"), isOn: Binding(
+                        get: { state.launchAtLogin },
+                        set: { updateLaunchAtLogin($0) }
+                    ))
+                        .controlSize(.large)
+                    Toggle(localized("Show in Dock"), isOn: $settings.showInDock)
+                        .controlSize(.large)
+                    Picker(localized("Language"), selection: $settings.language) {
+                        Text(localized("System")).tag(AppLanguage.system)
+                        Text(verbatim: "English").tag(AppLanguage.english)
+                        Text(verbatim: "Русский").tag(AppLanguage.russian)
+                    }
+                    Picker(localized("Appearance"), selection: $settings.appearance) { ForEach(AppAppearance.allCases) { Text(localized.key($0.rawValue)).tag($0) } }
                 }
-                Picker(localized("Appearance"), selection: $settings.appearance) { ForEach(AppAppearance.allCases) { Text(localized.key($0.rawValue)).tag($0) } }
+                .formStyle(.grouped)
+                .scrollContentBackground(colorScheme == .dark ? .visible : .hidden)
+                .frame(maxHeight: .infinity)
+
+                restoreDefaultsButton(target: .general)
             }
-            .formStyle(.grouped)
-            .scrollContentBackground(colorScheme == .dark ? .visible : .hidden)
 
         case .clipboard:
             VStack(spacing: 0) {
@@ -397,6 +406,11 @@ struct SettingsView: View {
         state.restoreDefaultsTarget = nil
         state.stopRecordingShortcut()
         switch target {
+        case .general:
+            settings.language = .system
+            settings.appearance = .system
+            settings.showInDock = false
+            updateLaunchAtLogin(true)
         case .clipboard:
             settings.restoreClipboardDefaults()
         case .shortcuts:
@@ -407,8 +421,16 @@ struct SettingsView: View {
     }
 
     private func updateLaunchAtLogin(_ enabled: Bool) {
-        do { if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() } }
-        catch { state.launchAtLogin = SMAppService.mainApp.status == .enabled; model.errorMessage = error.localizedDescription }
+        do {
+            if enabled {
+                if SMAppService.mainApp.status != .enabled { try SMAppService.mainApp.register() }
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+        } catch {
+            model.errorMessage = error.localizedDescription
+        }
+        state.launchAtLogin = SMAppService.mainApp.status == .enabled
     }
 }
 

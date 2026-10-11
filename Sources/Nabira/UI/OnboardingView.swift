@@ -7,7 +7,8 @@ struct OnboardingView: View {
     let pasteCoordinator: PasteCoordinator
     let finish: () -> Void
     @State private var step = 0
-    @State private var launchAtLogin = false
+    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+    @State private var launchAtLoginError: String?
     @State private var directPaste = false
 
     var body: some View {
@@ -27,13 +28,30 @@ struct OnboardingView: View {
         }
         .padding(32)
         .frame(width: 560, height: 420)
+        .alert(localized("Launch at Login"), isPresented: Binding(
+            get: { launchAtLoginError != nil },
+            set: { if !$0 { launchAtLoginError = nil } }
+        )) {
+            Button(localized("OK")) { launchAtLoginError = nil }
+        } message: {
+            Text(launchAtLoginError ?? "")
+        }
     }
 
     @ViewBuilder private var stepControl: some View {
         switch step {
         case 1:
             Toggle(localized("Launch Nabira at login"), isOn: $launchAtLogin)
-                .onChange(of: launchAtLogin) { _, enabled in try? enabled ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister() }
+                .onChange(of: launchAtLogin) { _, enabled in
+                    guard enabled != (SMAppService.mainApp.status == .enabled) else { return }
+                    do {
+                        if enabled { try SMAppService.mainApp.register() }
+                        else { try SMAppService.mainApp.unregister() }
+                    } catch {
+                        launchAtLogin = SMAppService.mainApp.status == .enabled
+                        launchAtLoginError = error.localizedDescription
+                    }
+                }
         case 2:
             Text("⌘B").font(.system(size: 34, weight: .semibold, design: .rounded)).padding(12).background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
         case 3:
