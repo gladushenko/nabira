@@ -68,7 +68,6 @@ struct ClipboardRow: View {
     let toggleFavorite: () -> Void
     let loadPreview: (UUID) async -> Data?
     @State private var isHovering = false
-    private let contentHeight: CGFloat = 94
     private let metadataRowHeight: CGFloat = 10
     private let actionButtonSize: CGFloat = 10
 
@@ -80,34 +79,39 @@ struct ClipboardRow: View {
                     .onTapGesture(count: pasteOnSingleClick ? 1 : 2, perform: paste)
             }
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
+                    actionButtons
+
                     HStack(spacing: 2) {
-                        metadataContent
                         Spacer(minLength: 4)
+                        metadataContent
                     }
                     .font(.callout)
                     .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
                     .contentShape(Rectangle())
                     .onTapGesture(count: pasteOnSingleClick ? 1 : 2, perform: paste)
-
-                    actionButtons
                 }
                 .frame(height: metadataRowHeight, alignment: .top)
 
-                Text(displayedContent)
-                    .font(.title2)
-                    .lineLimit(3)
-                    .frame(
-                        maxWidth: .infinity,
-                        minHeight: contentHeight - metadataRowHeight - 6,
-                        alignment: .leading
-                    )
-                    .contentShape(Rectangle())
-                    .onTapGesture(count: pasteOnSingleClick ? 1 : 2, perform: paste)
+                ZStack(alignment: .leading) {
+                    // Reserve two lines without aligning short content to the top.
+                    Text("\n")
+                        .lineLimit(2, reservesSpace: true)
+                        .hidden()
+                        .accessibilityHidden(true)
+
+                    Text(displayedContent)
+                        .lineLimit(3)
+                }
+                .font(.title2)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture(count: pasteOnSingleClick ? 1 : 2, perform: paste)
             }
-            .frame(maxWidth: .infinity, minHeight: contentHeight, alignment: .top)
+            .frame(maxWidth: .infinity, alignment: .top)
             .padding(.trailing, 14)
         }
         .padding(.vertical, 7)
@@ -123,11 +127,6 @@ struct ClipboardRow: View {
 
     private var actionButtons: some View {
         HStack(spacing: 16) {
-            actionButton(title: "Preview", systemImage: "eye", action: preview)
-                .opacity(isHovering ? 1 : 0)
-                .allowsHitTesting(isHovering)
-                .accessibilityHidden(!isHovering)
-
             if item.contentType.canBePinned {
                 actionButton(
                     title: item.isPinned ? "Remove from Favorites" : "Add to Favorites",
@@ -138,6 +137,11 @@ struct ClipboardRow: View {
                 .allowsHitTesting(item.isPinned || isHovering)
                 .accessibilityHidden(!item.isPinned && !isHovering)
             }
+
+            actionButton(title: "Preview", systemImage: "eye", action: preview)
+                .opacity(isHovering ? 1 : 0)
+                .allowsHitTesting(isHovering)
+                .accessibilityHidden(!isHovering)
         }
         .animation(.easeInOut(duration: 0.05), value: isHovering)
     }
@@ -173,6 +177,10 @@ struct ClipboardRow: View {
 
     private var displayedContent: String {
         if item.contentType == .image, item.title == "Image" { return localized("Image") }
+        if [.text, .richText, .html, .url, .color].contains(item.contentType),
+           !item.searchableText.isEmpty {
+            return item.searchableText
+        }
         guard item.contentType == .files else { return item.title }
         if item.title.hasPrefix("file://"),
            let url = URL(string: item.searchableText), url.isFileURL { return url.path }
