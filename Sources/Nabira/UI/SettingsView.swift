@@ -148,6 +148,7 @@ private enum SettingsModule: String, CaseIterable, Identifiable {
 }
 
 struct SettingsView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.appLocalization) private var localized
     @Bindable var settings: AppSettings
     @Bindable var model: HistoryViewModel
@@ -259,7 +260,7 @@ struct SettingsView: View {
                 Picker(localized("Appearance"), selection: $settings.appearance) { ForEach(AppAppearance.allCases) { Text(localized.key($0.rawValue)).tag($0) } }
             }
             .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
+            .scrollContentBackground(colorScheme == .dark ? .visible : .hidden)
 
         case .clipboard:
             VStack(spacing: 0) {
@@ -309,7 +310,7 @@ struct SettingsView: View {
                     }
                 }
                 .formStyle(.grouped)
-                .scrollContentBackground(.hidden)
+                .scrollContentBackground(colorScheme == .dark ? .visible : .hidden)
                 .frame(maxHeight: .infinity)
 
                 restoreDefaultsButton(target: .clipboard)
@@ -323,7 +324,7 @@ struct SettingsView: View {
                     }
                 }
                 .formStyle(.grouped)
-                .scrollContentBackground(.hidden)
+                .scrollContentBackground(colorScheme == .dark ? .visible : .hidden)
                 .frame(maxHeight: .infinity)
 
                 restoreDefaultsButton(target: .shortcuts)
@@ -342,7 +343,7 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
+            .scrollContentBackground(colorScheme == .dark ? .visible : .hidden)
         }
     }
 
